@@ -46,7 +46,7 @@ class BaseBot(JabberClient):
 
     def default(self, message):
         """Sample default response, acts as an echo bot
-            Should be overrriden in derived classes
+            Should be overriden in derived classes
 
         """
         return message
