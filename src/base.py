@@ -32,6 +32,22 @@ class BaseBot(JabberClient):
         
         """
         return [(r".*", self.default)]
+    
+    def controller_from_bot_methods(self):
+        """Takes all methods of the class in the form bot_* and returns
+        a controller list in the form [(regex matching the name of the
+        method without bot_, method)]
+
+        """
+        botregex = re.compile(r"^bot_.+")
+        botmethods = [method for method in dir(self) 
+                                    if callable(getattr(self,method))
+                                       and botregex.match(method)]
+        regexes = ["^"+method[4:]+".*" for method in botmethods]
+        return zip(regexes, [getattr(self, method) for method in botmethods])
+
+        
+
 
     def received(self, stanza):
         """Handler for normal messages. 

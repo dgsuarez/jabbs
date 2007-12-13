@@ -1,4 +1,5 @@
 import unittest
+import re
 import base
 
 from pyxmpp.all import JID, Message
@@ -29,7 +30,16 @@ class TestBase(unittest.TestCase):
         r=self.bot.get_reply_message(m, lambda x:x)
         self.assertEqual(r.get_to(), m.get_from())
 
+    def test_controller_from_bot_methods(self):
+        sb=self.SampleBotMethod("", "")
+        self.assertEqual(sb.controller_from_bot_methods(), 
+                         [("^bye.*", sb.bot_bye),("^hello.*", sb.bot_hello)])
 
+    class SampleBotMethod(base.BaseBot):
+        def bot_hello(self, message):
+            return "hi"
+        def bot_bye(self, message):
+            return "bye"
 
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestBase)
