@@ -32,8 +32,8 @@ class TestBase(unittest.TestCase):
 
     def test_controller_from_bot_methods(self):
         sb=self.SampleBotMethod("", "")
-        self.assertEqual(sb.controller_from_bot_methods(), 
-                         [("^bye.*", sb.bot_bye),("^hello.*", sb.bot_hello)])
+        self.assertEqual(sb.controller_from_bot_methods().sort(),
+                         [("^bye.*", sb.bot_bye),("^hello.*", sb.bot_hello)].sort())
 
     class SampleBotMethod(base.BaseBot):
         def bot_hello(self, message):
