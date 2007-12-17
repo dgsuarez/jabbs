@@ -22,13 +22,18 @@ class BaseBot(JabberClient):
         """
         JabberClient.session_started(self)
         self.stream.set_message_handler("normal", self.received)
+        self.stream.set_message_handler("chat", self.received)
+        self.stream.set_message_handler("groupchat", self.received)
+        self.stream.set_message_handler("headline", self.received)
+        self.stream.set_message_handler("error", self.error_received)
 
     def controller(self):
         """Default controller implementation. Should be overriden in
         derived classes.
             It returns a list of the form [(regex, method), ...] 
-        received messages will be matched against the regexs and method
-        will be called in the first one that matches
+        received messages will be matched against the regexs and the
+        corresponding method will be called in the first one that 
+        matches
         
         """
         return [(r".*", self.default)]
@@ -46,9 +51,6 @@ class BaseBot(JabberClient):
         regexes = ["^"+method[4:]+".*" for method in botmethods]
         return zip(regexes, [getattr(self, method) for method in botmethods])
 
-        
-
-
     def received(self, stanza):
         """Handler for normal messages. 
 
@@ -57,27 +59,34 @@ class BaseBot(JabberClient):
             return
         for pat, fun in self.controller():
             if re.compile(pat).match(stanza.get_body()):
-                self.send(self.get_reply_message(stanza, fun))
+                self.send(self.get_reply_stanza(stanza, fun))
                 return
 
-    def default(self, message):
+    def error_received(self, stanza):
+        """Handler for error messages.
+        Should be overriden in derived classes
+
+        """
+        print stanza.get_body()
+
+    def default(self, stanza):
         """Sample default response, acts as an echo bot
             Should be overriden in derived classes
 
         """
-        return message
+        return Message(to_jid=stanza.get_from(), 
+                body=stanza.get_body())
     
     def send(self, stanza):
         """Replies to a stanza"""
         self.stream.send(stanza)
 
-    def get_reply_message(self, stanza, fun):
+    def get_reply_stanza(self, stanza, fun):
         """Gets a reply to a stanza from aplying fun to
         the stanza's body
 
         """
-        return Message(to_jid=stanza.get_from(), 
-                       body=fun(stanza.get_body()))
+        return fun(stanza)
 
     def start(self):
         """Connects to the server and starts waiting for input"""

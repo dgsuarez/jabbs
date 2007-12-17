@@ -13,22 +13,18 @@ class TestBase(unittest.TestCase):
         self.assertEqual(self.bot.jid, JID("botiboti", "127.0.0.1", "BaseBot"))
 
     def test_default(self):
-        self.assertEqual(self.bot.default("hola"), "hola")
+        self.assertEqual(self.bot.default(Message(body="hola")),
+                Message(body="hola"))
 
-    def test_get_reply_message_inverted(self):
+    def test_get_reply_stanza_inverted(self):
         m=Message(from_jid=JID("c@s.com"),body="hola")
-        r=self.bot.get_reply_message(m, lambda x:x[::-1])
+        r=self.bot.get_reply_stanza(m, lambda x:Message(body=x.get_body()[::-1]))
         self.assertEqual(r.get_body(), "aloh")
 
-    def test_get_reply_message_regular(self):
+    def test_get_reply_stanza_regular(self):
         m=Message(from_jid=JID("c@s.com"),body="hola")
-        r=self.bot.get_reply_message(m, lambda x:x)
+        r=self.bot.get_reply_stanza(m, lambda x:x)
         self.assertEqual(r.get_body(), "hola")
-
-    def test_get_reply_message_jid(self):
-        m=Message(from_jid=JID("c@s.com"),body="hola")
-        r=self.bot.get_reply_message(m, lambda x:x)
-        self.assertEqual(r.get_to(), m.get_from())
 
     def test_controller_from_bot_methods(self):
         sb=self.SampleBotMethod("", "")
