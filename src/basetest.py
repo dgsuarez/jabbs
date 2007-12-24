@@ -37,6 +37,10 @@ class TestBase(unittest.TestCase):
         def bot_bye(self, message):
             return "bye"
 
+    def test_add_event(self):
+        self.bot.add_event(self.test_add_event, 0)
+        self.assertEqual(self.bot._BaseBot__events, [(self.test_add_event, 0, 0)])
+
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestBase)
 if __name__ == "__main__":

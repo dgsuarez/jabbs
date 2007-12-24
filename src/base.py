@@ -11,6 +11,8 @@ class BaseBot(JabberClient):
         password
 
         """
+        self.__time_elapsed=0
+        self.__events=[]
         jid_ = JID(jid)
         if not jid_.resource:
             jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
@@ -22,9 +24,6 @@ class BaseBot(JabberClient):
         """
         JabberClient.session_started(self)
         self.stream.set_message_handler("normal", self.received)
-        self.stream.set_message_handler("chat", self.received)
-        self.stream.set_message_handler("groupchat", self.received)
-        self.stream.set_message_handler("headline", self.received)
         self.stream.set_message_handler("error", self.error_received)
 
     def controller(self):
@@ -92,6 +91,38 @@ class BaseBot(JabberClient):
         """Connects to the server and starts waiting for input"""
         self.connect()
         self.loop()
+
+    def loop(self, timeout=1):
+        """Loop method, this will be run until client is disconnected
+        waits for client input and runs events
+
+        """
+        while 1:
+            stream=self.get_stream()
+            if not stream:
+                break
+            act=stream.loop_iter(timeout)
+            self.__time_elapsed+=timeout
+            if not act:
+                self.check_events(timeout)
+                self.idle()
+
+    def check_events(self, step):
+        for event in self.__events:
+            event.elapsed+=step
+            if event.elapsed >= event.timeout:
+                event.elapsed = 0
+                event.fun()
+
+    def add_event(self, fun, timeout, elapsed=0):
+        self.__events.append(Event(fun, timeout, elapsed))
+
+
+class Event():
+    def __init__(self, fun, timeout, elapsed=0):
+        self.fun = fun
+        self.timeout = timeout
+        self.elapsed = elapsed
 
 
 if __name__ == "__main__":
