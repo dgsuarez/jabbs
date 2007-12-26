@@ -108,21 +108,37 @@ class BaseBot(JabberClient):
                 self.idle()
 
     def check_events(self, step):
+        """Checks all events
+
+        """
         for event in self.__events:
-            event.elapsed+=step
-            if event.elapsed >= event.timeout:
-                event.elapsed = 0
-                event.fun()
+            event.check()
 
     def add_event(self, fun, timeout, elapsed=0):
+        """Adds a new event to the list of events"""
         self.__events.append(Event(fun, timeout, elapsed))
 
 
 class Event():
+    """Encapsulates an event: the function that should be called and the time
+    that needs to be elapsed between calls
+    
+    """
     def __init__(self, fun, timeout, elapsed=0):
+        """Initializes an event with the callback function, the timeout of the call
+        and optionally elapsed time for the first call
+
+        """
         self.fun = fun
         self.timeout = timeout
         self.elapsed = elapsed
+
+    def check(self):
+        """Checks if the callback should be made, and if it should it makes it"""
+        self.elapsed+=step
+        if self.elapsed >= self.timeout:
+            self.elapsed = 0
+            self.fun()
 
 
 if __name__ == "__main__":
