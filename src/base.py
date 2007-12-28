@@ -51,9 +51,7 @@ class BaseBot(JabberClient):
         return zip(regexes, [getattr(self, method) for method in botmethods])
 
     def received(self, stanza):
-        """Handler for normal messages. 
-
-        """
+        """Handler for normal messages"""
         if not stanza.get_body():
             return
         for pat, fun in self.controller():
@@ -108,15 +106,27 @@ class BaseBot(JabberClient):
                 self.idle()
 
     def check_events(self, step):
-        """Checks all events
-
-        """
+        """Checks all events"""
         for event in self.__events:
             event.check()
 
     def add_event(self, fun, timeout, elapsed=0):
         """Adds a new event to the list of events"""
         self.__events.append(Event(fun, timeout, elapsed))
+
+
+class IndividualBot(BaseBot):
+    """Simple bot that just handles one interlocutor"""
+
+    def received(self, stanza):
+        """Asigns the interlocutor and calls BaseBot.received"""
+        if not "interlocutor" in dir(self):
+            self.interlocutor = stanza.get_from()
+        BaseBot.received(self, stanza)
+
+    def create_message(self, message):
+        """Creates a new message from a string for the interlocutor"""
+        return Message(to_jid=self.interlocutor, body=message)
 
 
 class Event():
