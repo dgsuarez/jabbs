@@ -6,9 +6,12 @@ from pyxmpp.jabber.client import JabberClient
 
 class BaseBot(JabberClient):
 
-    def __init__(self, jid, passwd):
+    def __init__(self, jid, passwd, starter=None):
         """Initializes the bot with jid (username@jabberserver) and it's
-        password
+        password.
+
+        starter is the instance with the first controller to be used. If none 
+        is provided the controller in this instance will be used
 
         """
         self.__time_elapsed=0
@@ -17,6 +20,10 @@ class BaseBot(JabberClient):
         if not jid_.resource:
             jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
         JabberClient.__init__(self, jid_, passwd)
+        self.__controller=self.controller
+        if not starter:
+            starter=self
+        self.transfer(starter) 
 
     def session_started(self):
         """Triggered when the session starts. Sets some event handlers
@@ -49,6 +56,19 @@ class BaseBot(JabberClient):
                                        and botregex.match(method)]
         regexes = ["^"+method[4:]+".*" for method in botmethods]
         return zip(regexes, [getattr(self, method) for method in botmethods])
+
+    def transfer(self, instance):
+        """Transfers control to another bot, and if possible,
+        notifies the bot about this instance so control can come
+        back"""
+        self.__controller=self.controller
+        self.controller=instance.controller
+        if "set_caller" in dir(instance):
+            instance.set_caller(self)
+
+    def return_control(self):
+        """Sets the controller back to the one in this instance"""
+        self.controller=self.__controller
 
     def received(self, stanza):
         """Handler for normal messages"""
