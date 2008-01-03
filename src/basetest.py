@@ -13,12 +13,6 @@ class TestBase(unittest.TestCase):
         """Test creation of the bot"""
         self.assertEqual(self.bot.jid, JID("botiboti", "127.0.0.1", "BaseBot"))
 
-    def test_default(self):
-        """Test default behaviour"""
-        self.assertEqual(self.bot.default(Message(body="hola")),
-                Message(body="hola"))
-
-
     def test_get_reply_stanza(self):
         """Test replies to different kind of messages"""
         m=Message(from_jid=JID("c@s.com"),body="hola")
@@ -31,7 +25,7 @@ class TestBase(unittest.TestCase):
     def test_controller_from_bot_methods(self):
         """Test bot_ methods"""
         sb=self.SampleBotMethod("", "")
-        self.assertEqual(sb.controller_from_bot_methods().sort(),
+        self.assertEqual(base.controller_from_bot_methods(sb).sort(),
                          [("^bye.*", sb.bot_bye),("^hello.*", sb.bot_hello)].sort())
 
     class SampleBotMethod(base.BaseBot):

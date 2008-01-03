@@ -8,7 +8,7 @@ class Transferer():
         return Message(to_jid=stanza.get_from(), body="hi")
 
     def adios(self, stanza):
-        self.__caller.return_control()
+        self.__caller.transfer(base.DefaultController())
         return Message(to_jid=stanza.get_from(), body="bye "+self.name)
 
     def controller(self):

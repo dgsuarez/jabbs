@@ -20,9 +20,8 @@ class BaseBot(JabberClient):
         if not jid_.resource:
             jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
         JabberClient.__init__(self, jid_, passwd)
-        self.__controller=self.controller
         if not starter:
-            starter=self
+            starter=DefaultController()
         self.transfer(starter) 
 
     def session_started(self):
@@ -32,43 +31,14 @@ class BaseBot(JabberClient):
         JabberClient.session_started(self)
         self.stream.set_message_handler("normal", self.received)
         self.stream.set_message_handler("error", self.error_received)
-
-    def controller(self):
-        """Default controller implementation. Should be overriden in
-        derived classes.
-            It returns a list of the form [(regex, method), ...] 
-        received messages will be matched against the regexs and the
-        corresponding method will be called in the first one that 
-        matches
-        
-        """
-        return [(r".*", self.default)]
-    
-    def controller_from_bot_methods(self):
-        """Takes all methods of the class in the form bot_* and returns
-        a controller list in the form [(regex matching the name of the
-        method without bot_, method)]
-
-        """
-        botregex = re.compile(r"^bot_.+")
-        botmethods = [method for method in dir(self) 
-                                    if callable(getattr(self,method))
-                                       and botregex.match(method)]
-        regexes = ["^"+method[4:]+".*" for method in botmethods]
-        return zip(regexes, [getattr(self, method) for method in botmethods])
-
+   
     def transfer(self, instance):
         """Transfers control to another bot, and if possible,
         notifies the bot about this instance so control can come
         back"""
-        self.__controller=self.controller
         self.controller=instance.controller
         if "set_caller" in dir(instance):
             instance.set_caller(self)
-
-    def return_control(self):
-        """Sets the controller back to the one in this instance"""
-        self.controller=self.__controller
 
     def received(self, stanza):
         """Handler for normal messages"""
@@ -86,14 +56,7 @@ class BaseBot(JabberClient):
         """
         print stanza.get_body()
 
-    def default(self, stanza):
-        """Sample default response, acts as an echo bot
-            Should be overriden in derived classes
-
-        """
-        return Message(to_jid=stanza.get_from(), 
-                body=stanza.get_body())
-    
+       
     def send(self, stanza):
         """Replies to a stanza"""
         self.stream.send(stanza)
@@ -135,18 +98,28 @@ class BaseBot(JabberClient):
         self.__events.append(Event(fun, timeout, elapsed))
 
 
-class IndividualBot(BaseBot):
-    """Simple bot that just handles one interlocutor"""
+class DefaultController():
 
-    def received(self, stanza):
-        """Asigns the interlocutor and calls BaseBot.received"""
-        if not "interlocutor" in dir(self):
-            self.interlocutor = stanza.get_from()
-        BaseBot.received(self, stanza)
+    def controller(self):
+        """Sample default controller implementation. 
+            It returns a list of the form [(regex, method), ...] 
+        received messages will be matched against the regexs and the
+        corresponding method will be called in the first one that 
+        matches
+        
+        """
+        return [(r".*", self.default)]
+    
+    def default(self, stanza):
+        """Sample default response, acts as an echo bot
 
-    def create_message(self, message):
-        """Creates a new message from a string for the interlocutor"""
-        return Message(to_jid=self.interlocutor, body=message)
+        """
+        return Message(to_jid=stanza.get_from(), 
+                body=stanza.get_body())
+ 
+    def set_caller(self, caller):
+        """Is called by the core to notify about itself"""
+        self.__core=caller
 
 
 class Event():
@@ -169,6 +142,20 @@ class Event():
         if self.elapsed >= self.timeout:
             self.elapsed = 0
             self.fun()
+
+
+def controller_from_bot_methods(instance):
+        """Takes all methods of the instance in the form bot_* and returns
+        a controller list in the form [(regex matching the name of the
+        method without bot_, method)]
+
+        """
+        botregex = re.compile(r"^bot_.+")
+        botmethods = [method for method in dir(instance) 
+                                    if callable(getattr(instance,method))
+                                       and botregex.match(method)]
+        regexes = ["^"+method[4:]+".*" for method in botmethods]
+        return zip(regexes, [getattr(instance, method) for method in botmethods])
 
 
 if __name__ == "__main__":
