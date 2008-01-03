@@ -7,11 +7,11 @@ from pyxmpp.all import JID, Message
 class TestBase(unittest.TestCase):
 
     def setUp(self):
-        self.bot = base.BaseBot("botiboti@127.0.0.1", "b3rb3r3ch0")
+        self.bot = base.Core("botiboti@127.0.0.1", "b3rb3r3ch0")
 
     def test_jid(self):
         """Test creation of the bot"""
-        self.assertEqual(self.bot.jid, JID("botiboti", "127.0.0.1", "BaseBot"))
+        self.assertEqual(self.bot.jid, JID("botiboti", "127.0.0.1", "Core"))
 
     def test_get_reply_stanza(self):
         """Test replies to different kind of messages"""
@@ -28,7 +28,7 @@ class TestBase(unittest.TestCase):
         self.assertEqual(base.controller_from_bot_methods(sb).sort(),
                          [("^bye.*", sb.bot_bye),("^hello.*", sb.bot_hello)].sort())
 
-    class SampleBotMethod(base.BaseBot):
+    class SampleBotMethod(base.Core):
         def bot_hello(self, message):
             return "hi"
         def bot_bye(self, message):
@@ -37,9 +37,9 @@ class TestBase(unittest.TestCase):
     def test_add_event(self):
         """Test add events"""
         self.bot.add_event(self.test_add_event, 0)
-        self.assertEqual(self.bot._BaseBot__events[0].fun, self.test_add_event)
-        self.assertEqual(self.bot._BaseBot__events[0].elapsed, 0) 
-        self.assertEqual(self.bot._BaseBot__events[0].timeout, 0)
+        self.assertEqual(self.bot._Core__events[0].fun, self.test_add_event)
+        self.assertEqual(self.bot._Core__events[0].elapsed, 0) 
+        self.assertEqual(self.bot._Core__events[0].timeout, 0)
 
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestBase)

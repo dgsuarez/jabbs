@@ -4,14 +4,14 @@ from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 from pyxmpp.jabber.client import JabberClient
 
 
-class BaseBot(JabberClient):
+class Core(JabberClient):
 
     def __init__(self, jid, passwd, starter=None):
         """Initializes the bot with jid (username@jabberserver) and it's
         password.
 
         starter is the instance with the first controller to be used. If none 
-        is provided the controller in this instance will be used
+        is provided a default controller will be used
 
         """
         self.__time_elapsed=0
@@ -21,7 +21,7 @@ class BaseBot(JabberClient):
             jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
         JabberClient.__init__(self, jid_, passwd)
         if not starter:
-            starter=DefaultController()
+            starter=BasicController()
         self.transfer(starter) 
 
     def session_started(self):
@@ -35,10 +35,14 @@ class BaseBot(JabberClient):
     def transfer(self, instance):
         """Transfers control to another bot, and if possible,
         notifies the bot about this instance so control can come
-        back"""
+        back
+        
+        """
         self.controller=instance.controller
         if "set_caller" in dir(instance):
             instance.set_caller(self)
+        if "error_handler" in dir(instance):
+            self.__error_handler=instance.error_handler
 
     def received(self, stanza):
         """Handler for normal messages"""
@@ -50,11 +54,11 @@ class BaseBot(JabberClient):
                 return
 
     def error_received(self, stanza):
-        """Handler for error messages.
-        Should be overriden in derived classes
-
-        """
-        print stanza.get_body()
+        """Handler for error messages."""
+        if self.error_handler:
+            self.error_handler(stanza)
+        else:
+            print stanza.get_body()
 
        
     def send(self, stanza):
@@ -98,7 +102,7 @@ class BaseBot(JabberClient):
         self.__events.append(Event(fun, timeout, elapsed))
 
 
-class DefaultController():
+class BasicController():
 
     def controller(self):
         """Sample default controller implementation. 
@@ -116,6 +120,10 @@ class DefaultController():
         """
         return Message(to_jid=stanza.get_from(), 
                 body=stanza.get_body())
+
+    def error_handler(self, stanza):
+        """Sample error handler"""
+        print stanza
  
     def set_caller(self, caller):
         """Is called by the core to notify about itself"""
@@ -159,4 +167,4 @@ def controller_from_bot_methods(instance):
 
 
 if __name__ == "__main__":
-    BaseBot("botiboti@127.0.0.1", "b3rb3r3ch0").start()
+    Core("botiboti@127.0.0.1", "b3rb3r3ch0").start()

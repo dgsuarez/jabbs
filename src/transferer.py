@@ -8,7 +8,7 @@ class Transferer():
         return Message(to_jid=stanza.get_from(), body="hi")
 
     def adios(self, stanza):
-        self.__caller.transfer(base.DefaultController())
+        self.__caller.transfer(base.BasicController())
         return Message(to_jid=stanza.get_from(), body="bye "+self.name)
 
     def controller(self):
@@ -18,4 +18,4 @@ class Transferer():
         self.__caller=caller
 
 if __name__=="__main__":
-    base.BaseBot("botiboti@127.0.0.1", "b3rb3r3ch0", Transferer()).start()
+    base.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Transferer()).start()
