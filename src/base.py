@@ -21,7 +21,7 @@ class Core(JabberClient):
             jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
         JabberClient.__init__(self, jid_, passwd)
         if not starter:
-            starter=BasicController()
+            starter=Controller()
         self.transfer(starter) 
 
     def session_started(self):
@@ -32,31 +32,29 @@ class Core(JabberClient):
         self.stream.set_message_handler("normal", self.received)
         self.stream.set_message_handler("error", self.error_received)
    
-    def transfer(self, instance):
+    def transfer(self, controller):
         """Transfers control to another bot, and if possible,
         notifies the bot about this instance so control can come
         back
         
         """
-        self.controller=instance.controller
-        if "set_caller" in dir(instance):
-            instance.set_caller(self)
-        if "error_handler" in dir(instance):
-            self.__error_handler=instance.error_handler
+        self.controller=controller
+        if "set_caller" in dir(controller):
+            controller.set_caller(self)
 
     def received(self, stanza):
         """Handler for normal messages"""
         if not stanza.get_body():
             return
-        for pat, fun in self.controller():
+        for pat, fun in self.controller.controller():
             if re.compile(pat).match(stanza.get_body()):
                 self.send(self.get_reply_stanza(stanza, fun))
                 return
 
     def error_received(self, stanza):
         """Handler for error messages."""
-        if self.error_handler:
-            self.error_handler(stanza)
+        if "error_handler" in dir(controller):
+            controller.error_handler(stanza)
         else:
             print stanza.get_body()
 
@@ -102,7 +100,7 @@ class Core(JabberClient):
         self.__events.append(Event(fun, timeout, elapsed))
 
 
-class BasicController():
+class Controller():
 
     def controller(self):
         """Sample default controller implementation. 
