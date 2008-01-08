@@ -69,9 +69,8 @@ class Tester(JabberClient):
     def received(self, stanza):
         if not stanza.get_body():
             return 
-        expected=self.messages.get_answer()
         self.send_next=True
-        if stanza.get_body() != expected:
+        if stanza.get_body() != self.messages.get_answer():
             self.fail_count+=1
 
     def send(self, message, jid):

@@ -93,11 +93,11 @@ class Core(JabberClient):
     def check_events(self, step):
         """Checks all events"""
         for event in self.__events:
-            event.check()
+            event.check(step)
 
-    def add_event(self, fun, timeout, elapsed=0):
+    def add_event(self, event):
         """Adds a new event to the list of events"""
-        self.__events.append(Event(fun, timeout, elapsed))
+        self.__events.append(event)
 
 
 class Controller():
@@ -133,7 +133,7 @@ class Event():
     that needs to be elapsed between calls
     
     """
-    def __init__(self, fun, timeout, elapsed=0):
+    def __init__(self, fun, timeout, elapsed=0, args={}):
         """Initializes an event with the callback function, the timeout of the call
         and optionally elapsed time for the first call
 
@@ -141,13 +141,15 @@ class Event():
         self.fun = fun
         self.timeout = timeout
         self.elapsed = elapsed
+        self.args = args
 
-    def check(self):
+    def check(self, step):
         """Checks if the callback should be made, and if it should it makes it"""
         self.elapsed+=step
         if self.elapsed >= self.timeout:
             self.elapsed = 0
-            self.fun()
+            self.fun(**self.args)
+
 
 
 def controller_from_bot_methods(instance):
