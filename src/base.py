@@ -6,7 +6,7 @@ from pyxmpp.jabber.client import JabberClient
 
 class Core(JabberClient):
 
-    def __init__(self, jid, passwd, starter=None):
+    def __init__(self, jid, passwd, starter=None, starter_params={}):
         """Initializes the bot with jid (username@jabberserver) and it's
         password.
 
@@ -17,12 +17,14 @@ class Core(JabberClient):
         self.__time_elapsed=0
         self.__events=[]
         jid_ = JID(jid)
+        self.users = {}
         if not jid_.resource:
             jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
         JabberClient.__init__(self, jid_, passwd)
         if not starter:
-            starter=Controller()
-        self.transfer(starter) 
+            starter=Controller
+        self.__starter=starter
+        self.__starter_params=starter_params
 
     def session_started(self):
         """Triggered when the session starts. Sets some event handlers
@@ -32,13 +34,13 @@ class Core(JabberClient):
         self.stream.set_message_handler("normal", self.received)
         self.stream.set_message_handler("error", self.error_received)
    
-    def transfer(self, controller):
+    def transfer(self, controller, jid):
         """Transfers control to another bot, and if possible,
         notifies the bot about this instance so control can come
         back
         
         """
-        self.controller=controller
+        self.users[str(jid)]=controller
         if "set_caller" in dir(controller):
             controller.set_caller(self)
 
@@ -46,17 +48,17 @@ class Core(JabberClient):
         """Handler for normal messages"""
         if not stanza.get_body():
             return
-        for pat, fun in self.controller.controller():
+        if str(stanza.get_from()) not in self.users.keys():
+            self.transfer(self.__starter(**self.__starter_params), stanza.get_from())
+            #self.users.keys[str(stanza.get_from())]=self.__starter(**self.__starter_params)
+        for pat, fun in self.users[str(stanza.get_from())].controller():
             if re.compile(pat).match(stanza.get_body()):
                 self.send(self.get_reply_stanza(stanza, fun))
                 return
 
     def error_received(self, stanza):
         """Handler for error messages."""
-        if "error_handler" in dir(controller):
-            controller.error_handler(stanza)
-        else:
-            print stanza.get_body()
+        print stanza.get_body()
 
        
     def send(self, stanza):
@@ -125,7 +127,8 @@ class Controller():
  
     def set_caller(self, caller):
         """Is called by the core to notify about itself"""
-        self.__core=caller
+        print caller
+        self.core=caller
 
 
 class Event():
