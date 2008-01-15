@@ -10,8 +10,8 @@ class Core(JabberClient):
         """Initializes the bot with jid (username@jabberserver) and it's
         password.
 
-        starter is the instance with the first controller to be used. If none 
-        is provided a default controller will be used
+        starter is the class of the first controller to be used. If none 
+        is provided a default controller will be used.
 
         """
         self.__time_elapsed=0
@@ -41,8 +41,8 @@ class Core(JabberClient):
         
         """
         self.users[str(jid)]=controller
-        if "set_caller" in dir(controller):
-            controller.set_caller(self)
+        if "set_info" in dir(controller):
+            controller.set_info(self, jid)
 
     def received(self, stanza):
         """Handler for normal messages"""
@@ -125,10 +125,14 @@ class Controller():
         """Sample error handler"""
         print stanza
  
-    def set_caller(self, caller):
+    def set_info(self, caller, jid):
         """Is called by the core to notify about itself"""
-        print caller
-        self.core=caller
+        self.jid = jid
+        self.core = caller
+
+    def message(self, body):
+        """Creates a message to the jid associated with the controller"""
+        return Message(to_jid=self.jid, body=body)
 
 
 class Event():
