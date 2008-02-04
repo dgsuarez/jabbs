@@ -17,7 +17,7 @@ class Core(JabberClient):
         self.__time_elapsed=0
         self.__events=[]
         jid_ = JID(jid)
-        self.users = {}
+        self.threads = {}
         if not jid_.resource:
             jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
         JabberClient.__init__(self, jid_, passwd)
@@ -34,24 +34,24 @@ class Core(JabberClient):
         self.stream.set_message_handler("normal", self.received)
         self.stream.set_message_handler("error", self.error_received)
    
-    def transfer(self, controller, jid):
+    def transfer(self, controller, thread):
         """Transfers control to another bot, and if possible,
         notifies the bot about this instance so control can come
         back
         
         """
-        self.users[str(jid)]=controller
+        self.threads[str(thread)]=controller
         if "set_info" in dir(controller):
-            controller.set_info(self, jid)
+            controller.set_info(self, thread)
 
     def received(self, stanza):
         """Handler for normal messages"""
         if not stanza.get_body():
             return
-        if str(stanza.get_from()) not in self.users.keys():
-            self.transfer(self.__starter(**self.__starter_params), stanza.get_from())
-            #self.users.keys[str(stanza.get_from())]=self.__starter(**self.__starter_params)
-        for pat, fun in self.users[str(stanza.get_from())].controller():
+        if str(stanza.get_thread()) not in self.threads.keys():
+            self.transfer(self.__starter(**self.__starter_params), stanza.get_thread())
+        self.threads[str(stanza.get_thread())].add_jid(stanza.get_from())
+        for pat, fun in self.threads[str(stanza.get_thread())].controller():
             if re.compile(pat).match(stanza.get_body()):
                 self.send(self.get_reply_stanza(stanza, fun))
                 return
@@ -102,8 +102,11 @@ class Core(JabberClient):
         self.__events.append(event)
 
 
-class Controller():
-
+class Controller:
+    
+    def __init__(self):
+        self.jids=[]
+        
     def controller(self):
         """Sample default controller implementation. 
             It returns a list of the form [(regex, method), ...] 
@@ -124,18 +127,23 @@ class Controller():
     def error_handler(self, stanza):
         """Sample error handler"""
         print stanza
+    
+    def add_jid(self, jid):
+        """Add a new jid to the list of jids"""
+        if not jid in self.jids:
+            self.jids.append(jid)
  
-    def set_info(self, caller, jid):
+    def set_info(self, caller, thread):
         """Is called by the core to notify about itself"""
-        self.jid = jid
+        self.thread = thread
         self.core = caller
 
     def message(self, body):
-        """Creates a message to the jid associated with the controller"""
-        return Message(to_jid=self.jid, body=body)
+        """Creates a message to the jids associated with the controller"""
+        return Message(to_jid=self.jids[0], body=body)
 
 
-class Event():
+class Event:
     """Encapsulates an event: the function that should be called and the time
     that needs to be elapsed between calls
     

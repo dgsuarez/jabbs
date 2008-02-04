@@ -9,7 +9,7 @@ class Transferer(base.Controller):
         #return Message(to_jid=stanza.get_from(), body="hi")
 
     def adios(self, stanza):
-        self.core.transfer(base.Controller(), stanza.get_from())
+        self.core.transfer(base.Controller(), stanza.get_thread())
         return Message(to_jid=stanza.get_from(), body="bye "+self.name)
 
     def controller(self):
