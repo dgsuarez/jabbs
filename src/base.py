@@ -34,27 +34,20 @@ class Core(JabberClient):
         self.stream.set_message_handler("normal", self.received)
         self.stream.set_message_handler("error", self.error_received)
    
-    def transfer(self, controller, thread):
-        """Transfers control to another bot, and if possible,
-        notifies the bot about this instance so control can come
-        back
-        
-        """
-        self.threads[str(thread)]=controller
-        if "set_info" in dir(controller):
-            controller.set_info(self, thread)
-
+    
+    def start_conversation(self, thread):
+        print "start_conversation", thread
+        self.threads[str(thread)] = Conversation(thread, self.__starter, self.__starter_params, self)
+            
     def received(self, stanza):
         """Handler for normal messages"""
+        print "en received", stanza.get_thread()
         if not stanza.get_body():
             return
         if str(stanza.get_thread()) not in self.threads.keys():
-            self.transfer(self.__starter(**self.__starter_params), stanza.get_thread())
+            self.start_conversation(stanza.get_thread())
         self.threads[str(stanza.get_thread())].add_jid(stanza.get_from())
-        for pat, fun in self.threads[str(stanza.get_thread())].controller():
-            if re.compile(pat).match(stanza.get_body()):
-                self.send(self.get_reply_stanza(stanza, fun))
-                return
+        self.threads[str(stanza.get_thread())].received(stanza)
 
     def error_received(self, stanza):
         """Handler for error messages."""
@@ -101,11 +94,34 @@ class Core(JabberClient):
         """Adds a new event to the list of events"""
         self.__events.append(event)
 
+class Conversation:
+    def __init__(self, thread, controller, controller_params, core):
+        print "__init__ conversation", thread, 
+        self.thread=thread
+        controller_params["conversation"]=self
+        print controller_params
+        self.controller=controller(**controller_params)
+        self.core=core
+        self.jids=[]
+    
+    def received(self, stanza):
+        for pat, fun in self.controller.controller():
+            if re.compile(pat).match(stanza.get_body()):
+                return fun(stanza)
+            
+    def add_jid(self, jid):
+        """Add a new jid to the list of jids"""
+        if not jid in self.jids:
+            self.jids.append(jid)
+    
+    def transfer(self, controller):
+        self.controller=controller
 
 class Controller:
     
-    def __init__(self):
-        self.jids=[]
+    def __init__(self, conversation):
+        print "en init", conversation
+        self.conversation=conversation
         
     def controller(self):
         """Sample default controller implementation. 
@@ -121,26 +137,19 @@ class Controller:
         """Sample default response, acts as an echo bot
 
         """
-        return Message(to_jid=stanza.get_from(), 
-                body=stanza.get_body())
+        return self.message(stanza.get_body())
 
     def error_handler(self, stanza):
         """Sample error handler"""
         print stanza
-    
-    def add_jid(self, jid):
-        """Add a new jid to the list of jids"""
-        if not jid in self.jids:
-            self.jids.append(jid)
- 
-    def set_info(self, caller, thread):
-        """Is called by the core to notify about itself"""
-        self.thread = thread
-        self.core = caller
+
 
     def message(self, body):
         """Creates a message to the jids associated with the controller"""
-        return Message(to_jid=self.jids[0], body=body)
+        print "en message", self.conversation, self.conversation.thread
+        return Message(to_jid=self.conversation.jids[0],
+                       thread=self.conversation.thread,  
+                       body=body)
 
 
 class Event:

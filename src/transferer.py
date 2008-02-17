@@ -4,15 +4,17 @@ from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
 class Transferer(base.Controller):
     def hola(self, stanza):
+        print "en hola"
         self.name =  stanza.get_body()[5:]
         return self.message("hi")
-        #return Message(to_jid=stanza.get_from(), body="hi")
 
     def adios(self, stanza):
-        self.core.transfer(base.Controller(), stanza.get_thread())
-        return Message(to_jid=stanza.get_from(), body="bye "+self.name)
+        print "en adios"
+        self.conversation.transfer(base.Controller(self.conversation), stanza.get_thread())
+        return self.message("bye "+self.name)
 
     def controller(self):
+        print "en controller"
         return [("hola", self.hola), ("adios", self.adios)]
 
 

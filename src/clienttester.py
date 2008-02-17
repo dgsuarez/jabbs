@@ -1,7 +1,7 @@
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 from pyxmpp.jabber.client import JabberClient
 
-class Conversation():
+class Conversation:
     """Implements a conversation in the form of pairs of sentences. The
     second sentence in the pair is a reply for the first one
 
@@ -74,7 +74,7 @@ class Tester(JabberClient):
             self.fail_count+=1
 
     def send(self, message, jid):
-        m=Message(to_jid=jid, body=message)
+        m=Message(to_jid=jid, body=message, thread="jabbsclienttester")
         self.stream.send(m)
 
     def loop(self, timeout=1):
