@@ -16,7 +16,7 @@ class TestBase(unittest.TestCase):
 
     def test_controller_from_bot_methods(self):
         """Test bot_ methods"""
-        sb=self.SampleBotMethod("", "")
+        sb = self.SampleBotMethod("", "")
         self.assertEqual(base.controller_from_bot_methods(sb).sort(),
                          [("^bye.*", sb.bot_bye),("^hello.*", sb.bot_hello)].sort())
 

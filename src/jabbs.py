@@ -9,7 +9,8 @@ from pyxmpp.jabber.client import JabberClient
 
 
 class Core(JabberClient):
-
+    """Core of the framework, handles connections and dispatches messages 
+    to the corresponding Conversation"""
     def __init__(self, jid, passwd, starter=None, starter_params={}):
         """Initializes the bot with jid (username@jabberserver) and it's
         password.
@@ -18,31 +19,34 @@ class Core(JabberClient):
         is provided a default controller will be used.
 
         """
-        self.__time_elapsed=0
-        self.__events=[]
+        self.__time_elapsed = 0
+        self.__events = []
         jid_ = JID(jid)
         self.conversations = {}
         if not jid_.resource:
-            jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
+            jid_ = JID(jid_.node, jid_.domain, self.__class__.__name__)
         JabberClient.__init__(self, jid_, passwd)
         if not starter:
-            starter=Controller
-        self.__starter=starter
-        self.__starter_params=starter_params
+            starter = Controller
+        self.__starter = starter
+        self.__starter_params = starter_params
 
     def session_started(self):
-        """Triggered when the session starts. Sets some event handlers
-        
-        """
+        """Triggered when the session starts. Sets some event handlers"""
         JabberClient.session_started(self)
         self.stream.set_message_handler("normal", self.received)
         self.stream.set_message_handler("error", self.error_received)
        
     def start_conversation(self, jid):
-        queue_out=Queue.Queue(5)
-        queue_in=Queue.Queue(5)
+        """Spans a new thread for a new conversation, which is associated to jid"""
+        queue_out = Queue.Queue(5)
+        queue_in = Queue.Queue(5)
         self.conversations[jid] = ConversationQueues(queue_in, queue_out)
-        Conversation(jid, self.__starter, self.__starter_params, ConversationQueues(queue_out, queue_in)).start()
+        Conversation(jid, 
+                     self.__starter, 
+                     self.__starter_params, 
+                     ConversationQueues(queue_out, queue_in)
+                     ).start()
         
     def received(self, stanza):
         """Handler for normal messages"""
@@ -51,12 +55,11 @@ class Core(JabberClient):
             return
         if stanza.get_from() not in self.conversations.keys():
             self.start_conversation(stanza.get_from())
-        #self.conversations[str(stanza.get_from())].add_jid(stanza.get_from())
         self.conversations[stanza.get_from()].queue_out.put(stanza)
         self.send(self.conversations[stanza.get_from()].queue_in.get())
 
     def error_received(self, stanza):
-        """Handler for error messages."""
+        """Handler for error messages"""
         print stanza.get_body()
 
        
@@ -70,16 +73,13 @@ class Core(JabberClient):
         self.loop()
 
     def loop(self, timeout=1):
-        """Loop method, this will be run until client is disconnected
-        waits for client input and runs events
-
-        """
+        """Loop method, waits for client input and runs events"""
         while 1:
-            stream=self.get_stream()
+            stream = self.get_stream()
             if not stream:
                 break
-            act=stream.loop_iter(timeout)
-            self.__time_elapsed+=timeout
+            act = stream.loop_iter(timeout)
+            self.__time_elapsed += timeout
             if not act:
                 self.check_events(timeout)
                 self.idle()
@@ -93,50 +93,53 @@ class Core(JabberClient):
         """Adds a new event to the list of events"""
         self.__events.append(event)
 
+
 class Conversation (threading.Thread):
+    """Conversation thread. Takes care of a single conversation.
+    Multiple conversations can be run in parallel, one for each jid"""
     def __init__(self, jid, controller, controller_params, queues): 
         self.jid = jid
-        controller_params["conversation"] = self
-        self.controller=controller(**controller_params)
-        self.jids = []
-        self.queues=queues
+        self.controller = controller(conversation=self, **controller_params)
+        self.queues = queues
         self.__next_stanza_id = 0
         threading.Thread.__init__(self)
     
     def run(self):
+        """Waits for input from the core and answers back"""
         while True:
-            stanza=self.queues.queue_in.get()
-            self.queues.queue_out.put(self.received(stanza))
+            stanza = self.queues.queue_in.get()
+            self.queues.queue_out.put(self.get_reply(stanza))
 
-    def received(self, stanza):
+    def get_reply(self, stanza):
+        """Replies to stanza according to the controller"""
         for pat, fun in self.controller.controller():
             if re.compile(pat).match(stanza.get_body()):
                 return fun(stanza)
-            
-    def add_jid(self, jid):
-        """Add a new jid to the list of jids"""
-        if not jid in self.jids:
-            self.jids.append(jid)
     
     def get_next_stanza_id(self):
+        """Returns next stanza id for the session"""
         self.__next_stanza_id += 1
         return "jabbsconv%d" % self.__next_stanza_id
     
     next_stanza_id=property(get_next_stanza_id)
     
     def transfer(self, controller):
-        self.controller=controller
+        """Transfers control to a new controller"""
+        self.controller = controller
+        self.controller.conversation = self
+
 
 class ConversationQueues:
-    
+    """Queues needed for communicating the core and a conversation"""
     def __init__(self, queue_in, queue_out):
-        self.queue_in=queue_in
-        self.queue_out=queue_out
+        self.queue_in = queue_in
+        self.queue_out = queue_out
+        
         
 class Controller:
-    
-    def __init__(self, conversation):
-        self.conversation=conversation
+    """Controller base class. Controllers must inherit from this one"""
+    def __init__(self, conversation=None):
+        self.conversation = conversation
         
     def controller(self):
         """Sample default controller implementation. 
@@ -149,9 +152,7 @@ class Controller:
         return [(r".*", self.default)]
     
     def default(self, stanza):
-        """Sample default response, acts as an echo bot
-
-        """
+        """Sample default response, acts as an echo bot"""
         return self.message(stanza.get_body())
 
     def error_handler(self, stanza):
@@ -190,19 +191,18 @@ class Event:
             self.fun(**self.args)
 
 
-
-def controller_from_bot_methods(instance):
+def controller_from_bot_methods(controller):
         """Takes all methods of the instance in the form bot_* and returns
         a controller list in the form [(regex matching the name of the
         method without bot_, method)]
 
         """
         botregex = re.compile(r"^bot_.+")
-        botmethods = [method for method in dir(instance) 
-                                    if callable(getattr(instance,method))
+        botmethods = [method for method in dir(controller) 
+                                    if callable(getattr(controller,method))
                                        and botregex.match(method)]
         regexes = ["^"+method[4:]+".*" for method in botmethods]
-        return zip(regexes, [getattr(instance, method) for method in botmethods])
+        return zip(regexes, [getattr(controller, method) for method in botmethods])
 
 
 if __name__ == "__main__":

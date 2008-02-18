@@ -11,7 +11,7 @@ class Conversation:
         sentence and it's reply
 
         """
-        self.__message_list=message_list
+        self.__message_list = message_list
         self.index=0
 
     def get_next_message(self):
@@ -19,7 +19,7 @@ class Conversation:
         next. Else returns None
 
         """
-        if self.index==len(self.__message_list):
+        if self.index == len(self.__message_list):
             return None
         return self.__message_list[self.index][0]
 
@@ -28,9 +28,9 @@ class Conversation:
         next. Else returns None
 
         """
-        if self.index==len(self.__message_list):
+        if self.index == len(self.__message_list):
             return None
-        self.index=self.index+1
+        self.index = self.index+1
         return self.__message_list[self.index-1][1]
 
 
@@ -44,14 +44,14 @@ class Tester(JabberClient):
         sentence and it's expected reply
 
         """
-        self.messages=Conversation(message_list)
-        self.to_jid=JID(to_jid)
-        jid_=JID(jid)
-        self.fail_count=0
+        self.messages = Conversation(message_list)
+        self.to_jid = JID(to_jid)
+        jid_ = JID(jid)
+        self.fail_count = 0
         if not jid_.resource:
-            jid_=JID(jid_.node, jid_.domain, "Mibot")
+            jid_ = JID(jid_.node, jid_.domain, "Mibot")
         JabberClient.__init__(self, jid_, passwd)
-        self.send_next=True
+        self.send_next = True
 
     def start(self):
         """Starts the conversation. Returns True if every answer was right,
@@ -60,7 +60,7 @@ class Tester(JabberClient):
         """
         self.connect()
         self.loop()
-        return self.fail_count==0
+        return self.fail_count == 0
 
     def session_started(self):
         JabberClient.session_started(self)
@@ -69,26 +69,25 @@ class Tester(JabberClient):
     def received(self, stanza):
         if not stanza.get_body():
             return 
-        self.send_next=True
+        self.send_next = True
         if stanza.get_body() != self.messages.get_answer():
-            self.fail_count+=1
+            self.fail_count += 1
 
     def send(self, message, jid):
-        m=Message(to_jid=jid, body=message, thread="jabbsclienttester")
+        m = Message(to_jid=jid, body=message, thread="jabbsclienttester")
         self.stream.send(m)
 
     def loop(self, timeout=1):
          while 1:
-            stream=self.get_stream()
+            stream = self.get_stream()
             if not stream:
                 break
-            act=stream.loop_iter(timeout)
+            act = stream.loop_iter(timeout)
             if not act:
                 if self.send_next:
-                    m=self.messages.get_next_message()
+                    m = self.messages.get_next_message()
                     if not m:
                         self.disconnect()
                     self.send(m, self.to_jid)
-                    self.send_next=False
+                    self.send_next = False
                 self.idle()
-
