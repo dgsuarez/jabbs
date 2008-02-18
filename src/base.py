@@ -57,13 +57,6 @@ class Core(JabberClient):
         """Replies to a stanza"""
         self.stream.send(stanza)
 
-    def get_reply_stanza(self, stanza, fun):
-        """Gets a reply to a stanza from aplying fun to
-        the stanza's body
-
-        """
-        return fun(stanza)
-
     def start(self):
         """Connects to the server and starts waiting for input"""
         self.connect()
@@ -94,14 +87,13 @@ class Core(JabberClient):
         self.__events.append(event)
 
 class Conversation:
-    def __init__(self, jid, controller, controller_params, core):
-        print "__init__ conversation", jid, 
-        self.jid=jid
-        controller_params["conversation"]=self
-        print controller_params
+    def __init__(self, jid, controller, controller_params, core): 
+        self.jid = jid
+        controller_params["conversation"] = self
         self.controller=controller(**controller_params)
-        self.core=core
-        self.jids=[]
+        self.core = core
+        self.jids = []
+        self.__next_stanza_id = 0
     
     def received(self, stanza):
         for pat, fun in self.controller.controller():
@@ -113,13 +105,18 @@ class Conversation:
         if not jid in self.jids:
             self.jids.append(jid)
     
+    def get_next_stanza_id(self):
+        self.__next_stanza_id += 1
+        return "jabbsconv%d" % self.__next_stanza_id
+    
+    next_stanza_id=property(get_next_stanza_id)
+    
     def transfer(self, controller):
         self.controller=controller
 
 class Controller:
     
     def __init__(self, conversation):
-        print "en init", conversation
         self.conversation=conversation
         
     def controller(self):
@@ -145,9 +142,10 @@ class Controller:
 
     def message(self, body):
         """Creates a message to the jids associated with the controller"""
-        print "en message a", self.conversation.jid
         return Message(to_jid=self.conversation.jid, 
-                       body=body)
+                       body=body,
+                       stanza_type="chat",
+                       stanza_id=self.conversation.next_stanza_id)
 
 
 class Event:

@@ -13,14 +13,6 @@ class TestBase(unittest.TestCase):
         """Test creation of the bot"""
         self.assertEqual(self.bot.jid, JID("botiboti", "127.0.0.1", "Core"))
 
-    def test_get_reply_stanza(self):
-        """Test replies to different kind of messages"""
-        m=Message(from_jid=JID("c@s.com"),body="hola")
-        r=self.bot.get_reply_stanza(m, lambda x:Message(body=x.get_body()[::-1]))
-        self.assertEqual(r.get_body(), "aloh")
-        m=Message(from_jid=JID("c@s.com"),body="hola")
-        r=self.bot.get_reply_stanza(m, lambda x:x)
-        self.assertEqual(r.get_body(), "hola")
 
     def test_controller_from_bot_methods(self):
         """Test bot_ methods"""
