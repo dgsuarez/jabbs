@@ -1,4 +1,8 @@
+from __future__ import with_statement
+
 import re
+import threading
+import Queue
 
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 from pyxmpp.jabber.client import JabberClient
@@ -33,20 +37,23 @@ class Core(JabberClient):
         JabberClient.session_started(self)
         self.stream.set_message_handler("normal", self.received)
         self.stream.set_message_handler("error", self.error_received)
-   
-    
+       
     def start_conversation(self, jid):
+        queue_out=Queue.Queue(5)
+        queue_in=Queue.Queue(5)
+        self.conversations[jid] = ConversationQueues(queue_in, queue_out)
+        Conversation(jid, self.__starter, self.__starter_params, ConversationQueues(queue_out, queue_in)).start()
         
-        self.conversations[jid] = Conversation(jid, self.__starter, self.__starter_params, self)
-            
     def received(self, stanza):
         """Handler for normal messages"""
+        print threading.enumerate()
         if not stanza.get_body():
             return
         if stanza.get_from() not in self.conversations.keys():
             self.start_conversation(stanza.get_from())
         #self.conversations[str(stanza.get_from())].add_jid(stanza.get_from())
-        self.send(self.conversations[stanza.get_from()].received(stanza))
+        self.conversations[stanza.get_from()].queue_out.put(stanza)
+        self.send(self.conversations[stanza.get_from()].queue_in.get())
 
     def error_received(self, stanza):
         """Handler for error messages."""
@@ -86,15 +93,21 @@ class Core(JabberClient):
         """Adds a new event to the list of events"""
         self.__events.append(event)
 
-class Conversation:
-    def __init__(self, jid, controller, controller_params, core): 
+class Conversation (threading.Thread):
+    def __init__(self, jid, controller, controller_params, queues): 
         self.jid = jid
         controller_params["conversation"] = self
         self.controller=controller(**controller_params)
-        self.core = core
         self.jids = []
+        self.queues=queues
         self.__next_stanza_id = 0
+        threading.Thread.__init__(self)
     
+    def run(self):
+        while True:
+            stanza=self.queues.queue_in.get()
+            self.queues.queue_out.put(self.received(stanza))
+
     def received(self, stanza):
         for pat, fun in self.controller.controller():
             if re.compile(pat).match(stanza.get_body()):
@@ -114,6 +127,12 @@ class Conversation:
     def transfer(self, controller):
         self.controller=controller
 
+class ConversationQueues:
+    
+    def __init__(self, queue_in, queue_out):
+        self.queue_in=queue_in
+        self.queue_out=queue_out
+        
 class Controller:
     
     def __init__(self, conversation):
