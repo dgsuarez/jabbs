@@ -1,6 +1,6 @@
 import unittest
 import re
-import base
+import jabbs as base
 
 from pyxmpp.all import JID, Message
 

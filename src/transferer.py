@@ -1,8 +1,8 @@
-import base
+import jabbs
 
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
-class Transferer(base.Controller):
+class Transferer(jabbs.Controller):
     def hola(self, stanza):
         print "en hola"
         self.name =  stanza.get_body()[5:]
@@ -10,7 +10,7 @@ class Transferer(base.Controller):
 
     def adios(self, stanza):
         print "en adios"
-        self.conversation.transfer(base.Controller(self.conversation))
+        self.conversation.transfer(jabbs.Controller(self.conversation))
         return self.message("bye "+self.name)
 
     def controller(self):
@@ -19,4 +19,4 @@ class Transferer(base.Controller):
 
 
 if __name__=="__main__":
-    base.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Transferer).start()
+    jabbs.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Transferer).start()
