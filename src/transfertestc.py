@@ -5,7 +5,7 @@ import clienttester
 
 class TestBase(unittest.TestCase):
 
-    def test_echo_conversation(self):
+    def test_transference(self):
         """"""
         c=clienttester.Tester("gramparsons@127.0.0.1", "b3rb3r3ch0", 
                                 "botiboti@127.0.0.1", 

@@ -10,7 +10,7 @@ class Transferer(base.Controller):
 
     def adios(self, stanza):
         print "en adios"
-        self.conversation.transfer(base.Controller(self.conversation), stanza.get_thread())
+        self.conversation.transfer(base.Controller(self.conversation))
         return self.message("bye "+self.name)
 
     def controller(self):

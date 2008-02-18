@@ -17,7 +17,7 @@ class Core(JabberClient):
         self.__time_elapsed=0
         self.__events=[]
         jid_ = JID(jid)
-        self.threads = {}
+        self.conversations = {}
         if not jid_.resource:
             jid_=JID(jid_.node, jid_.domain, self.__class__.__name__)
         JabberClient.__init__(self, jid_, passwd)
@@ -35,19 +35,18 @@ class Core(JabberClient):
         self.stream.set_message_handler("error", self.error_received)
    
     
-    def start_conversation(self, thread):
-        print "start_conversation", thread
-        self.threads[str(thread)] = Conversation(thread, self.__starter, self.__starter_params, self)
+    def start_conversation(self, jid):
+        
+        self.conversations[jid] = Conversation(jid, self.__starter, self.__starter_params, self)
             
     def received(self, stanza):
         """Handler for normal messages"""
-        print "en received", stanza.get_thread()
         if not stanza.get_body():
             return
-        if str(stanza.get_thread()) not in self.threads.keys():
-            self.start_conversation(stanza.get_thread())
-        self.threads[str(stanza.get_thread())].add_jid(stanza.get_from())
-        self.threads[str(stanza.get_thread())].received(stanza)
+        if stanza.get_from() not in self.conversations.keys():
+            self.start_conversation(stanza.get_from())
+        #self.conversations[str(stanza.get_from())].add_jid(stanza.get_from())
+        self.send(self.conversations[stanza.get_from()].received(stanza))
 
     def error_received(self, stanza):
         """Handler for error messages."""
@@ -95,9 +94,9 @@ class Core(JabberClient):
         self.__events.append(event)
 
 class Conversation:
-    def __init__(self, thread, controller, controller_params, core):
-        print "__init__ conversation", thread, 
-        self.thread=thread
+    def __init__(self, jid, controller, controller_params, core):
+        print "__init__ conversation", jid, 
+        self.jid=jid
         controller_params["conversation"]=self
         print controller_params
         self.controller=controller(**controller_params)
@@ -146,9 +145,8 @@ class Controller:
 
     def message(self, body):
         """Creates a message to the jids associated with the controller"""
-        print "en message", self.conversation, self.conversation.thread
-        return Message(to_jid=self.conversation.jids[0],
-                       thread=self.conversation.thread,  
+        print "en message a", self.conversation.jid
+        return Message(to_jid=self.conversation.jid, 
                        body=body)
 
 
