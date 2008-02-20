@@ -1,8 +1,8 @@
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 from pyxmpp.jabber.client import JabberClient
 
-class Conversation:
-    """Implements a conversation in the form of pairs of sentences. The
+class Dialogue:
+    """Implements a dialogue in the form of pairs of sentences. The
     second sentence in the pair is a reply for the first one
 
     """
@@ -15,7 +15,7 @@ class Conversation:
         self.index=0
 
     def get_next_message(self):
-        """If there are messages left in the conversation returns the
+        """If there are messages left in the dialogue returns the
         next. Else returns None
 
         """
@@ -24,7 +24,7 @@ class Conversation:
         return self.__message_list[self.index][0]
 
     def get_answer(self):
-        """If there are messages left in the conversation returns the
+        """If there are messages left in the dialogue returns the
         next. Else returns None
 
         """
@@ -35,7 +35,7 @@ class Conversation:
 
 
 class Tester(JabberClient):
-    """Has a Conversation with a bot through Jabber
+    """Has a dialogue with a bot through Jabber
 
     """
     
@@ -44,7 +44,7 @@ class Tester(JabberClient):
         sentence and it's expected reply
 
         """
-        self.messages = Conversation(message_list)
+        self.messages = Dialogue(message_list)
         self.to_jid = JID(to_jid)
         jid_ = JID(jid)
         self.fail_count = 0
