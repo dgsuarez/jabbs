@@ -2,28 +2,32 @@ import re
 import threading
 import Queue
 
-from pyxmpp.all import JID,Iq,Presence,Message,StreamError
+from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 from pyxmpp.jabber.client import JabberClient
 
 
 class Core(JabberClient):
     """Core of the framework, handles connections and dispatches messages 
     to the corresponding Conversation"""
-    def __init__(self, jid, passwd, starter=None, starter_params={}):
+    def __init__(self, jid, passwd, starter=None, starter_params={}, user_control=(lambda x:True)):
         """Initializes the bot with jid (username@jabberserver) and it's
         password.
 
-        starter is the class of the first controller to be used. If none 
-        is provided a default controller will be used.
+        starter and starter_params are the class of the first controller to be used and
+        it's params. If none is provided a default controller will be used.
+        
+        user_control is a function to determine if a user should be accepted if he request
+        so with a suscribe presence stanza. Must return True/False
 
         """
         self.__time_elapsed = 0
         self.__events = []
-        jid_ = JID(jid)
+        self.jid = JID(jid)
         self.conversations = {}
-        if not jid_.resource:
-            jid_ = JID(jid_.node, jid_.domain, self.__class__.__name__)
-        JabberClient.__init__(self, jid_, passwd)
+        self.user_control = user_control
+        if not self.jid.resource:
+            self.jid = JID(self.jid.node, self.jid.domain, self.__class__.__name__)
+        JabberClient.__init__(self, self.jid, passwd)
         if not starter:
             starter = Controller
         self.__starter = starter
@@ -34,6 +38,11 @@ class Core(JabberClient):
         JabberClient.session_started(self)
         self.stream.set_message_handler("normal", self.received)
         self.stream.set_message_handler("error", self.error_received)
+        self.stream.set_presence_handler("subscribe",self.presence_received)
+        self.stream.set_presence_handler("unsubscribe",self.presence_received)
+        self.stream.set_presence_handler("subscribed",self.presence_received)
+        self.stream.set_presence_handler("unsubscribed",self.presence_received)
+        
        
     def start_conversation(self, jid):
         """Spans a new thread for a new conversation, which is associated to jid"""
@@ -55,7 +64,17 @@ class Core(JabberClient):
             self.start_conversation(stanza.get_from())
         self.conversations[stanza.get_from()].queue_out.put(stanza)
         self.send(self.conversations[stanza.get_from()].queue_in.get())
-
+    
+    def presence_received(self, stanza):
+        """Handler for subscription stanzas"""
+        print "tipo presencia", stanza.get_type()
+        if self.user_control(stanza.get_from()):
+            self.send(stanza.make_accept_response())
+        else:
+            self.send(stanza.make_deny_response())
+        
+        
+    
     def error_received(self, stanza):
         """Handler for error messages"""
         print stanza.get_body()
