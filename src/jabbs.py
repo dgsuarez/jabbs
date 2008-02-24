@@ -1,6 +1,7 @@
 import re
 import threading
 import Queue
+import logging
 
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 from pyxmpp.jabber.client import JabberClient
@@ -32,6 +33,11 @@ class Core(JabberClient):
             starter = Controller
         self.__starter = starter
         self.__starter_params = starter_params
+        self.logger = logging.getLogger("logger")
+        self.logger.setLevel(logging.DEBUG)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        self.logger.addHandler(ch)
 
     def session_started(self):
         """Triggered when the session starts. Sets some event handlers"""
@@ -42,6 +48,8 @@ class Core(JabberClient):
         self.stream.set_presence_handler("unsubscribe",self.presence_received)
         self.stream.set_presence_handler("subscribed",self.presence_received)
         self.stream.set_presence_handler("unsubscribed",self.presence_received)
+        self.logger.info("Session started")
+        
         
        
     def start_conversation(self, jid):
@@ -54,12 +62,14 @@ class Core(JabberClient):
                      self.__starter_params, 
                      ConversationQueues(queue_out, queue_in)
                      ).start()
+        self.logger.info("Started new conversation with %s", jid)
+        self.logger.debug("Thread list: %s", threading.enumerate())
         
     def received(self, stanza):
         """Handler for normal messages"""
-        print threading.enumerate()
         if not stanza.get_body():
             return
+        self.logger.info("Received message from %s", stanza.get_from())
         if stanza.get_from() not in self.conversations.keys():
             self.start_conversation(stanza.get_from())
         self.conversations[stanza.get_from()].queue_out.put(stanza)
@@ -67,7 +77,7 @@ class Core(JabberClient):
     
     def presence_received(self, stanza):
         """Handler for subscription stanzas"""
-        print "tipo presencia", stanza.get_type()
+        self.logger.info("Received %s request from %s", stanza.get_type(), stanza.get_from())
         if self.user_control(stanza.get_from()):
             self.send(stanza.make_accept_response())
         else:
