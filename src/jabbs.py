@@ -2,6 +2,7 @@ import re
 import threading
 import Queue
 import logging
+import types
 
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 from pyxmpp.jabber.client import JabberClient
@@ -11,13 +12,13 @@ class Core(JabberClient):
     """Core of the framework, handles connections and dispatches messages 
     to the corresponding Conversation"""
     def __init__(self, jid, passwd, starter=None, starter_params={}, user_control=(lambda x:True)):
-        """Initializes the bot with jid (username@jabberserver) and it's
+        """Initializes the bot with jid (node@domain) and it's
         password.
 
         starter and starter_params are the class of the first controller to be used and
         it's params. If none is provided a default controller will be used.
         
-        user_control is a function to determine if a user should be accepted if he request
+        user_control is a function to determine if a user should be accepted if he requests
         so with a suscribe presence stanza. Must return True/False
 
         """
@@ -62,18 +63,22 @@ class Core(JabberClient):
                      self.__starter_params, 
                      ConversationQueues(queue_out, queue_in)
                      ).start()
-        self.logger.info("Started new conversation with %s", jid)
+        self.logger.info("Started new conversation with %s@%s", jid.node, jid.domain)
         self.logger.debug("Thread list: %s", threading.enumerate())
         
     def received(self, stanza):
         """Handler for normal messages"""
         if not stanza.get_body():
             return
-        self.logger.info("Received message from %s", stanza.get_from())
+        self.logger.info("Received message from %s@%s", stanza.get_from().node, stanza.get_from().domain)
         if stanza.get_from() not in self.conversations.keys():
             self.start_conversation(stanza.get_from())
         self.conversations[stanza.get_from()].queue_out.put(stanza)
-        self.send(self.conversations[stanza.get_from()].queue_in.get())
+        ans=self.conversations[stanza.get_from()].queue_in.get()
+        if type(ans) == types.StringType and ans == "end":
+            del self.conversations[stanza.get_from()]
+        else:
+            self.send(ans)
     
     def presence_received(self, stanza):
         """Handler for subscription stanzas"""
@@ -130,13 +135,19 @@ class Conversation (threading.Thread):
         self.queues = queues
         self.__next_stanza_id = 0
         threading.Thread.__init__(self)
+        self.__stop = False
     
     def run(self):
         """Waits for input from the core and answers back"""
-        while True:
+        while not self.__stop:
             stanza = self.queues.queue_in.get()
             self.queues.queue_out.put(self.get_reply(stanza))
-
+    
+    def end(self):
+        """Ends the session with the user"""
+        self.__stop = True
+        return "end"
+        
     def get_reply(self, stanza):
         """Replies to stanza according to the controller"""
         for pat, fun in self.controller.controller():

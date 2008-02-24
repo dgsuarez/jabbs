@@ -5,7 +5,8 @@ from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 class PoorBoy(jabbs.Controller):
     
     def controller(self):
-        return [(".*", self.change_person)]
+        return [("^bye", self.bye),
+                (".*", self.change_person)]
     
     def change_person(self, stanza):
         substitutions = [("you", "i"),
@@ -28,6 +29,9 @@ class PoorBoy(jabbs.Controller):
                     l[1]=True
         body = " ".join([l[0] for l in s_body])
         return self.message("I know " + body)
+    
+    def bye(self, stanza):
+        return self.conversation.end()
 
 if __name__=="__main__":
     jabbs.Core("botiboti@127.0.0.1", "b3rb3r3ch0", PoorBoy).start()
