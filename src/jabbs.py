@@ -25,35 +25,43 @@ class Core(JabberClient):
         """
         self.__time_elapsed = 0
         self.__events = []
-        self.jid = JID(jid)
         self.conversations = {}
         self.user_control = user_control
-        if not self.jid.resource:
-            self.jid = JID(self.jid.node, self.jid.domain, self.__class__.__name__)
-        JabberClient.__init__(self, self.jid, passwd)
+        self.jid=self.create_jid(jid)
         if not starter:
             starter = Controller
         self.__starter = starter
         self.__starter_params = starter_params
+        self.initialize_logger()
+        JabberClient.__init__(self, self.jid, passwd)
+
+    def initialize_logger(self):
+        """Initializes logger"""
         self.logger = logging.getLogger("logger")
         self.logger.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
         self.logger.addHandler(ch)
-
+    
+    def create_jid(self, jid):
+        """Creates an apropiate jid"""
+        jid_ = JID(jid)
+        if not jid_.resource:
+            return JID(jid_.node, jid_.domain, self.__class__.__name__)
+        return jid_
+        
     def session_started(self):
         """Triggered when the session starts. Sets some event handlers"""
         JabberClient.session_started(self)
-        self.stream.set_message_handler("normal", self.received)
+        self.stream.set_message_handler("chat", self.received_chat)
+        self.stream.set_message_handler("groupchat", self.received_chat)
         self.stream.set_message_handler("error", self.error_received)
-        self.stream.set_presence_handler("subscribe",self.presence_received)
-        self.stream.set_presence_handler("unsubscribe",self.presence_received)
-        self.stream.set_presence_handler("subscribed",self.presence_received)
-        self.stream.set_presence_handler("unsubscribed",self.presence_received)
+        self.stream.set_presence_handler("subscribe",self.received_presence)
+        self.stream.set_presence_handler("unsubscribe",self.received_presence)
+        self.stream.set_presence_handler("subscribed",self.received_presence)
+        self.stream.set_presence_handler("unsubscribed",self.received_presence)
         self.logger.info("Session started")
         
-        
-       
     def start_conversation(self, jid):
         """Spans a new thread for a new conversation, which is associated to jid"""
         queue_out = Queue.Queue(5)
@@ -67,11 +75,12 @@ class Core(JabberClient):
         self.logger.info("Started new conversation with %s@%s", jid.node, jid.domain)
         self.logger.debug("Thread list: %s", threading.enumerate())
         
-    def received(self, stanza):
-        """Handler for normal messages"""
+    def received_chat(self, stanza):
+        """Handler for chat messages"""
+        self.logger.info("Received %s message from %s@%s",stanza.get_type(), stanza.get_from().node, stanza.get_from().domain)
         if not stanza.get_body():
+            self.logger.info("Message was empty")
             return
-        self.logger.info("Received message from %s@%s", stanza.get_from().node, stanza.get_from().domain)
         if stanza.get_from() not in self.conversations.keys():
             self.start_conversation(stanza.get_from())
         self.conversations[stanza.get_from()].queue_out.put(stanza)
@@ -79,11 +88,28 @@ class Core(JabberClient):
         if ans.type == MessageWrapper.message_types.end:
             self.send(ans.stanza)
             del self.conversations[stanza.get_from()]
-            self.logger.info("Conversation with %s@%s ended",stanza.get_from().node, stanza.get_from().domain)
+            self.logger.info("Conversation with %s@%s ended", stanza.get_from().node, stanza.get_from().domain)
         else:
             self.send(ans.stanza)
     
-    def presence_received(self, stanza):
+    def received_groupchat(self, stanza):
+        """Handler for groupchat messages"""
+        self.logger.info("Received %s message from %s@%s",stanza.get_type(), stanza.get_to().node, stanza.get_to().domain)
+        if not stanza.get_body():
+            self.logger.info("Message was empty")
+            return
+        if stanza.get_to().bare() not in self.conversations.keys():
+            self.start_conversation(stanza.get_to().bare())
+        self.conversations[stanza.get_to().bare()].queue_out.put(stanza)
+        ans=self.conversations[stanza.get_to().bare()].queue_in.get()
+        if ans.type == MessageWrapper.message_types.end:
+            self.send(ans.stanza)
+            del self.conversations[stanza.get_to().bare()]
+            self.logger.info("Conversation with %s@%s ended", stanza.get_to().node, stanza.get_to().domain)
+        else:
+            self.send(ans.stanza)
+            
+    def received_presence(self, stanza):
         """Handler for subscription stanzas"""
         self.logger.info("Received %s request from %s", stanza.get_type(), stanza.get_from())
         if self.user_control(stanza.get_from()):
