@@ -31,7 +31,7 @@ class PoorBoy(jabbs.Controller):
         return self.message("I know " + body)
     
     def bye(self, stanza):
-        return self.conversation.end(self.message("bye"))
+        return self.end("bye")
 
 if __name__=="__main__":
     jabbs.Core("botiboti@127.0.0.1", "b3rb3r3ch0", PoorBoy).start()

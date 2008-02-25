@@ -143,17 +143,18 @@ class Conversation (threading.Thread):
             stanza = self.queues.queue_in.get()
             self.queues.queue_out.put(self.get_reply(stanza))
     
-    def end(self, stanza):
+    def end(self):
         """Ends the session with the user"""
         self.__stop = True
-        stanza.type=MessageWrapper.message_types.end
-        return stanza
         
     def get_reply(self, stanza):
         """Replies to stanza according to the controller"""
         for pat, fun in self.controller.controller():
             if re.compile(pat).match(stanza.get_body()):
-                return fun(stanza)
+                ans=fun(stanza)
+                if ans.type == MessageWrapper.message_types.end:
+                    self.end()
+                return ans
     
     def get_next_stanza_id(self):
         """Returns next stanza id for the session"""
@@ -166,6 +167,7 @@ class Conversation (threading.Thread):
         """Transfers control to a new controller"""
         self.controller = controller
         self.controller.conversation = self
+
 
 class MessageWrapper:
     """Wrapper for stanzas between the core and the conversations,
@@ -214,7 +216,15 @@ class Controller:
                                              stanza_type="chat",
                                              stanza_id=self.conversation.next_stanza_id),
                               type=MessageWrapper.message_types.stanza)
-
+        
+    def end(self, body):
+        """Returns an end message"""
+        return MessageWrapper(stanza=Message(to_jid=self.conversation.jid, 
+                                             body=body,
+                                             stanza_type="chat",
+                                             stanza_id=self.conversation.next_stanza_id),
+                              type=MessageWrapper.message_types.end)
+        
 
 class Event:
     """Encapsulates an event: the function that should be called and the time
