@@ -3,6 +3,7 @@ import threading
 import Queue
 import logging
 import types
+import enum
 
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 from pyxmpp.jabber.client import JabberClient
@@ -75,10 +76,12 @@ class Core(JabberClient):
             self.start_conversation(stanza.get_from())
         self.conversations[stanza.get_from()].queue_out.put(stanza)
         ans=self.conversations[stanza.get_from()].queue_in.get()
-        if type(ans) == types.StringType and ans == "end":
+        if ans.type == MessageWrapper.message_types.end:
+            self.send(ans.stanza)
             del self.conversations[stanza.get_from()]
+            self.logger.info("Conversation with %s@%s ended",stanza.get_from().node, stanza.get_from().domain)
         else:
-            self.send(ans)
+            self.send(ans.stanza)
     
     def presence_received(self, stanza):
         """Handler for subscription stanzas"""
@@ -88,13 +91,10 @@ class Core(JabberClient):
         else:
             self.send(stanza.make_deny_response())
         
-        
-    
     def error_received(self, stanza):
         """Handler for error messages"""
         print stanza.get_body()
 
-       
     def send(self, stanza):
         """Replies to a stanza"""
         self.stream.send(stanza)
@@ -143,10 +143,11 @@ class Conversation (threading.Thread):
             stanza = self.queues.queue_in.get()
             self.queues.queue_out.put(self.get_reply(stanza))
     
-    def end(self):
+    def end(self, stanza):
         """Ends the session with the user"""
         self.__stop = True
-        return "end"
+        stanza.type=MessageWrapper.message_types.end
+        return stanza
         
     def get_reply(self, stanza):
         """Replies to stanza according to the controller"""
@@ -166,6 +167,14 @@ class Conversation (threading.Thread):
         self.controller = controller
         self.controller.conversation = self
 
+class MessageWrapper:
+    """Wrapper for stanzas between the core and the conversations,
+    so additional information can be added"""
+    message_types = enum.Enum("stanza", "end")
+    
+    def __init__(self, type=message_types.stanza, stanza=None):
+        self.stanza = stanza
+        self.type = type
 
 class ConversationQueues:
     """Queues needed for communicating the core and a conversation"""
@@ -200,10 +209,11 @@ class Controller:
 
     def message(self, body):
         """Creates a message to the jids associated with the controller"""
-        return Message(to_jid=self.conversation.jid, 
-                       body=body,
-                       stanza_type="chat",
-                       stanza_id=self.conversation.next_stanza_id)
+        return MessageWrapper(stanza=Message(to_jid=self.conversation.jid, 
+                                             body=body,
+                                             stanza_type="chat",
+                                             stanza_id=self.conversation.next_stanza_id),
+                              type=MessageWrapper.message_types.stanza)
 
 
 class Event:
