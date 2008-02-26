@@ -6,13 +6,14 @@ import types
 import enum
 
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
+from pyxmpp.jabber.muc import MucRoomHandler, MucRoomManager
 from pyxmpp.jabber.client import JabberClient
 
 
 class Core(JabberClient):
     """Core of the framework, handles connections and dispatches messages 
     to the corresponding Conversation"""
-    def __init__(self, jid, passwd, starter=None, starter_params={}, user_control=(lambda x:True)):
+    def __init__(self, jid, passwd, starter=None, starter_params={}, user_control=(lambda x:True), default_nick="botiboti", rooms_to_join=[]):
         """Initializes the bot with jid (node@domain) and it's
         password.
 
@@ -27,12 +28,14 @@ class Core(JabberClient):
         self.__events = []
         self.conversations = {}
         self.user_control = user_control
-        self.jid=self.create_jid(jid)
+        self.jid = self.create_jid(jid)
+        self.default_nick = default_nick
         if not starter:
             starter = Controller
         self.__starter = starter
         self.__starter_params = starter_params
         self.initialize_logger()
+        self.rooms_to_join = rooms_to_join
         JabberClient.__init__(self, self.jid, passwd)
 
     def initialize_logger(self):
@@ -51,16 +54,38 @@ class Core(JabberClient):
         return jid_
         
     def session_started(self):
-        """Triggered when the session starts. Sets some event handlers"""
+        """Triggered when the session starts. Sets some event handlers and
+        connects to indicated rooms
+        
+        """
         JabberClient.session_started(self)
         self.stream.set_message_handler("chat", self.received_chat)
-        self.stream.set_message_handler("groupchat", self.received_chat)
         self.stream.set_message_handler("error", self.error_received)
         self.stream.set_presence_handler("subscribe",self.received_presence)
         self.stream.set_presence_handler("unsubscribe",self.received_presence)
         self.stream.set_presence_handler("subscribed",self.received_presence)
         self.stream.set_presence_handler("unsubscribed",self.received_presence)
         self.logger.info("Session started")
+        self.mucman = MucRoomManager(self.stream)
+        self.mucman.set_handlers()
+        for room in self.rooms_to_join:
+            self.join_room(JID(room))
+        
+        
+    def join_room(self, jid):
+        room_jid=JID(jid)
+        self.mucman.join(room_jid, self.default_nick, RoomHandler(self))
+        queue_out = Queue.Queue(5)
+        queue_in = Queue.Queue(5)
+        self.conversations[room_jid] = ConversationQueues(queue_in, queue_out)
+        Conversation(room_jid, 
+                     self.__starter, 
+                     self.__starter_params, 
+                     ConversationQueues(queue_out, queue_in),
+                     "groupchat"
+                     ).start()
+        self.logger.info("Started new conversation in %s", room_jid.as_string())
+        self.logger.debug("Thread list: %s", threading.enumerate())
         
     def start_conversation(self, jid):
         """Spans a new thread for a new conversation, which is associated to jid"""
@@ -70,10 +95,12 @@ class Core(JabberClient):
         Conversation(jid, 
                      self.__starter, 
                      self.__starter_params, 
-                     ConversationQueues(queue_out, queue_in)
+                     ConversationQueues(queue_out, queue_in),
+                     "chat"
                      ).start()
         self.logger.info("Started new conversation with %s@%s", jid.node, jid.domain)
         self.logger.debug("Thread list: %s", threading.enumerate())
+        
         
     def received_chat(self, stanza):
         """Handler for chat messages"""
@@ -91,21 +118,19 @@ class Core(JabberClient):
             self.logger.info("Conversation with %s@%s ended", stanza.get_from().node, stanza.get_from().domain)
         else:
             self.send(ans.stanza)
-    
-    def received_groupchat(self, stanza):
+            
+    def received_groupchat(self, user, stanza):
         """Handler for groupchat messages"""
-        self.logger.info("Received %s message from %s@%s",stanza.get_type(), stanza.get_to().node, stanza.get_to().domain)
+        self.logger.info("Received %s message from %s", stanza.get_from().as_string())
         if not stanza.get_body():
             self.logger.info("Message was empty")
             return
-        if stanza.get_to().bare() not in self.conversations.keys():
-            self.start_conversation(stanza.get_to().bare())
-        self.conversations[stanza.get_to().bare()].queue_out.put(stanza)
-        ans=self.conversations[stanza.get_to().bare()].queue_in.get()
+        self.conversations[stanza.get_from().bare()].queue_out.put(stanza)
+        ans=self.conversations[stanza.get_from().bare()].queue_in.get()
         if ans.type == MessageWrapper.message_types.end:
             self.send(ans.stanza)
-            del self.conversations[stanza.get_to().bare()]
-            self.logger.info("Conversation with %s@%s ended", stanza.get_to().node, stanza.get_to().domain)
+            del self.conversations[stanza.get_from().bare()]
+            self.logger.info("Groupchat in %s ended", stanza.get_from().as_string())
         else:
             self.send(ans.stanza)
             
@@ -123,6 +148,7 @@ class Core(JabberClient):
 
     def send(self, stanza):
         """Replies to a stanza"""
+        self.logger.debug("stanza to send: %s", stanza.serialize())
         self.stream.send(stanza)
 
     def start(self):
@@ -155,9 +181,9 @@ class Core(JabberClient):
 class Conversation (threading.Thread):
     """Conversation thread. Takes care of a single conversation.
     Multiple conversations can be run in parallel, one for each jid"""
-    def __init__(self, jid, controller, controller_params, queues): 
+    def __init__(self, jid, controller, controller_params, queues, type): 
         self.jid = jid
-        self.controller = controller(conversation=self, **controller_params)
+        self.controller = controller(conversation=self, type=type, **controller_params)
         self.queues = queues
         self.__next_stanza_id = 0
         threading.Thread.__init__(self)
@@ -209,12 +235,27 @@ class ConversationQueues:
     def __init__(self, queue_in, queue_out):
         self.queue_in = queue_in
         self.queue_out = queue_out
+
+class RoomHandler(MucRoomHandler):
+    
+    def __init__(self, core):
+        self.core = core
+        self.logger = logging.getLogger("logger")
         
+    def message_received(self, user, stanza):
+        if self.room_state.get_nick() == stanza.get_from().resource:
+            return
+        self.logger.info("received stanza: "+ stanza.serialize())
+        self.core.received_groupchat(user, stanza)
         
+    def error(self, stanza):
+        self.logger.info("received error stanza: "+ stanza.serialize())
+            
 class Controller:
     """Controller base class. Controllers must inherit from this one"""
-    def __init__(self, conversation=None):
+    def __init__(self, conversation=None, type="chat"):
         self.conversation = conversation
+        self.type = type
         
     def controller(self):
         """Sample default controller implementation. 
@@ -239,7 +280,7 @@ class Controller:
         """Creates a message to the jids associated with the controller"""
         return MessageWrapper(stanza=Message(to_jid=self.conversation.jid, 
                                              body=body,
-                                             stanza_type="chat",
+                                             stanza_type=self.type,
                                              stanza_id=self.conversation.next_stanza_id),
                               type=MessageWrapper.message_types.stanza)
         
@@ -290,4 +331,4 @@ def controller_from_bot_methods(controller):
 
 
 if __name__ == "__main__":
-    Core("botiboti@127.0.0.1", "b3rb3r3ch0").start()
+    Core("botiboti@127.0.0.1", "b3rb3r3ch0", rooms_to_join=["chats@conference.127.0.0.1"]).start()
