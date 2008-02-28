@@ -7,6 +7,7 @@ class Jablog(jabbs.Controller):
     def __init__(self, conversation, type):
         self.file = open("log.txt", 'w')
         jabbs.Controller.__init__(self, conversation, type)
+        
     def controller(self):
         return [("^end_logging", self.bye),
                 (".*", self.log)]

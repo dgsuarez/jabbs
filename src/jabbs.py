@@ -2,7 +2,6 @@ import re
 import threading
 import Queue
 import logging
-import types
 import enum
 
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
@@ -74,10 +73,12 @@ class Core(JabberClient):
     def join_room(self, jid):
         """Joins the room jid, starting a new thread for its messages"""
         room_jid=JID(jid)
-        self.mucman.join(room_jid, self.default_nick, RoomHandler(self))
-        self.start_conversation(room_jid, "groupchat")
+        handler = RoomHandler(self)
+        self.mucman.join(room_jid, self.default_nick, handler)
+        room_state = handler.room_state
+        self.start_conversation(room_jid, "groupchat", room_state)
         
-    def start_conversation(self, jid, type="chat"):
+    def start_conversation(self, jid, type="chat", room_state = None):
         """Spans a new thread for a new conversation, which is associated to jid"""
         queue_out = Queue.Queue(5)
         queue_in = Queue.Queue(5)
@@ -86,7 +87,8 @@ class Core(JabberClient):
                      self.__starter, 
                      self.__starter_params, 
                      ConversationQueues(queue_out, queue_in),
-                     type
+                     type,
+                     room_state
                      ).start()
         self.logger.info("Started new conversation with %s@%s", jid.node, jid.domain)
         self.logger.debug("Thread list: %s", threading.enumerate())
@@ -169,13 +171,14 @@ class Core(JabberClient):
 class Conversation (threading.Thread):
     """Conversation thread. Takes care of a single conversation.
     Multiple conversations can be run in parallel, one for each jid"""
-    def __init__(self, jid, controller, controller_params, queues, type): 
+    def __init__(self, jid, controller, controller_params, queues, type, room_state): 
         self.jid = jid
         self.controller = controller(conversation=self, type=type, **controller_params)
         self.queues = queues
+        self.room_state = room_state
         self.__next_stanza_id = 0
-        threading.Thread.__init__(self)
         self.__stop = False
+        threading.Thread.__init__(self)
     
     def run(self):
         """Waits for input from the core and answers back"""
@@ -196,6 +199,7 @@ class Conversation (threading.Thread):
                 if ans.type == MessageWrapper.message_types.end:
                     self.end()
                 return ans
+        return MessageWrapper(MessageWrapper.message_types.none)
     
     def get_next_stanza_id(self):
         """Returns next stanza id for the session"""
@@ -260,6 +264,8 @@ class Controller:
     
     def default(self, stanza):
         """Sample default response, acts as an echo bot"""
+        if self.conversation.room_state:
+            print self.conversation.room_state.users
         return self.message(stanza.get_body())
 
     def error_handler(self, stanza):
