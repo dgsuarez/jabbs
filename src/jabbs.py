@@ -71,23 +71,13 @@ class Core(JabberClient):
         for room in self.rooms_to_join:
             self.join_room(JID(room))
         
-        
     def join_room(self, jid):
+        """Joins the room jid, starting a new thread for its messages"""
         room_jid=JID(jid)
         self.mucman.join(room_jid, self.default_nick, RoomHandler(self))
-        queue_out = Queue.Queue(5)
-        queue_in = Queue.Queue(5)
-        self.conversations[room_jid] = ConversationQueues(queue_in, queue_out)
-        Conversation(room_jid, 
-                     self.__starter, 
-                     self.__starter_params, 
-                     ConversationQueues(queue_out, queue_in),
-                     "groupchat"
-                     ).start()
-        self.logger.info("Started new conversation in %s", room_jid.as_string())
-        self.logger.debug("Thread list: %s", threading.enumerate())
+        self.start_conversation(room_jid, "groupchat")
         
-    def start_conversation(self, jid):
+    def start_conversation(self, jid, type="chat"):
         """Spans a new thread for a new conversation, which is associated to jid"""
         queue_out = Queue.Queue(5)
         queue_in = Queue.Queue(5)
@@ -96,11 +86,10 @@ class Core(JabberClient):
                      self.__starter, 
                      self.__starter_params, 
                      ConversationQueues(queue_out, queue_in),
-                     "chat"
+                     type
                      ).start()
         self.logger.info("Started new conversation with %s@%s", jid.node, jid.domain)
         self.logger.debug("Thread list: %s", threading.enumerate())
-        
         
     def received_chat(self, stanza):
         """Handler for chat messages"""
@@ -110,14 +99,7 @@ class Core(JabberClient):
             return
         if stanza.get_from() not in self.conversations.keys():
             self.start_conversation(stanza.get_from())
-        self.conversations[stanza.get_from()].queue_out.put(stanza)
-        ans=self.conversations[stanza.get_from()].queue_in.get()
-        if ans.type == MessageWrapper.message_types.end:
-            self.send(ans.stanza)
-            del self.conversations[stanza.get_from()]
-            self.logger.info("Conversation with %s@%s ended", stanza.get_from().node, stanza.get_from().domain)
-        else:
-            self.send(ans.stanza)
+        self.process_received(stanza, stanza.get_from())
             
     def received_groupchat(self, user, stanza):
         """Handler for groupchat messages"""
@@ -125,15 +107,21 @@ class Core(JabberClient):
         if not stanza.get_body():
             self.logger.info("Message was empty")
             return
-        self.conversations[stanza.get_from().bare()].queue_out.put(stanza)
-        ans=self.conversations[stanza.get_from().bare()].queue_in.get()
+        self.process_received(stanza, stanza.get_from().bare())
+    
+    def process_received(self, stanza, to_jid):
+        """Process any kind of message stanza"""
+        self.conversations[to_jid].queue_out.put(stanza)
+        ans=self.conversations[to_jid].queue_in.get()
         if ans.type == MessageWrapper.message_types.end:
             self.send(ans.stanza)
-            del self.conversations[stanza.get_from().bare()]
-            self.logger.info("Groupchat in %s ended", stanza.get_from().as_string())
+            del self.conversations[to_jid]
+            self.logger.info("Conversation with %s@%s ended", stanza.get_from().node, stanza.get_from().domain)
+        elif ans.type == MessageWrapper.message_types.none:
+            return
         else:
             self.send(ans.stanza)
-            
+        
     def received_presence(self, stanza):
         """Handler for subscription stanzas"""
         self.logger.info("Received %s request from %s", stanza.get_type(), stanza.get_from())
@@ -193,7 +181,8 @@ class Conversation (threading.Thread):
         """Waits for input from the core and answers back"""
         while not self.__stop:
             stanza = self.queues.queue_in.get()
-            self.queues.queue_out.put(self.get_reply(stanza))
+            ans = self.get_reply(stanza)
+            self.queues.queue_out.put(ans)
     
     def end(self):
         """Ends the session with the user"""
@@ -224,7 +213,7 @@ class Conversation (threading.Thread):
 class MessageWrapper:
     """Wrapper for stanzas between the core and the conversations,
     so additional information can be added"""
-    message_types = enum.Enum("stanza", "end")
+    message_types = enum.Enum("stanza", "end", "none")
     
     def __init__(self, type=message_types.stanza, stanza=None):
         self.stanza = stanza
@@ -235,6 +224,7 @@ class ConversationQueues:
     def __init__(self, queue_in, queue_out):
         self.queue_in = queue_in
         self.queue_out = queue_out
+
 
 class RoomHandler(MucRoomHandler):
     
@@ -251,6 +241,7 @@ class RoomHandler(MucRoomHandler):
     def error(self, stanza):
         self.logger.info("received error stanza: "+ stanza.serialize())
             
+
 class Controller:
     """Controller base class. Controllers must inherit from this one"""
     def __init__(self, conversation=None, type="chat"):
@@ -275,23 +266,22 @@ class Controller:
         """Sample error handler"""
         print stanza
 
-
-    def message(self, body):
+    def message(self, body, type=MessageWrapper.message_types.stanza):
         """Creates a message to the jids associated with the controller"""
         return MessageWrapper(stanza=Message(to_jid=self.conversation.jid, 
                                              body=body,
                                              stanza_type=self.type,
                                              stanza_id=self.conversation.next_stanza_id),
-                              type=MessageWrapper.message_types.stanza)
+                              type=type)
         
     def end(self, body):
         """Returns an end message"""
-        return MessageWrapper(stanza=Message(to_jid=self.conversation.jid, 
-                                             body=body,
-                                             stanza_type="chat",
-                                             stanza_id=self.conversation.next_stanza_id),
-                              type=MessageWrapper.message_types.end)
-        
+        return self.message(body, MessageWrapper.message_types.end)
+    
+    def no_message(self):
+        """Returns a no message"""
+        return self.message("", MessageWrapper.message_types.none)
+    
 
 class Event:
     """Encapsulates an event: the function that should be called and the time
