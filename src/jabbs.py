@@ -101,7 +101,7 @@ class Core(JabberClient):
             return
         if stanza.get_from() not in self.conversations.keys():
             self.start_conversation(stanza.get_from())
-        self.process_received(stanza, stanza.get_from())
+        self.conversations[stanza.get_from()].queue_out.put(stanza.copy())
             
     def received_groupchat(self, user, stanza):
         """Handler for groupchat messages"""
@@ -109,20 +109,31 @@ class Core(JabberClient):
         if not stanza.get_body():
             self.logger.info("Message was empty")
             return
-        self.process_received(stanza, stanza.get_from().bare())
+        self.conversations[stanza.get_from().bare()].queue_out.put(stanza.copy())
     
-    def process_received(self, stanza, to_jid):
+    def process_received(self, ans):
         """Process any kind of message stanza"""
-        self.conversations[to_jid].queue_out.put(stanza)
-        ans=self.conversations[to_jid].queue_in.get()
+        print "process_received"
         if ans.type == MessageWrapper.message_types.end:
             self.send(ans.stanza)
-            del self.conversations[to_jid]
-            self.logger.info("Conversation with %s@%s ended", stanza.get_from().node, stanza.get_from().domain)
+            del self.conversations[ans.stanza.get_from()]
+            self.logger.info("Conversation with %s ended", ans.stanza.get_from().as_string())
         elif ans.type == MessageWrapper.message_types.none:
             return
         else:
             self.send(ans.stanza)
+    
+    def check_for_answers(self):
+        """Checks if answers from conversations are available. If so 
+        calls process_received to process them
+        
+        """
+        for jid, queues in self.conversations.items():
+            try:
+                ans = queues.queue_in.get(False)
+                self.process_received(ans)
+            except:
+                pass
         
     def received_presence(self, stanza):
         """Handler for subscription stanzas"""
@@ -154,6 +165,7 @@ class Core(JabberClient):
                 break
             act = stream.loop_iter(timeout)
             self.__time_elapsed += timeout
+            self.check_for_answers()
             if not act:
                 self.check_events(timeout)
                 self.idle()
