@@ -1,9 +1,10 @@
-import jabbs
 import re
+
+from jabbs import controller, core
 
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
-class Minuteman (jabbs.Controller):
+class Minuteman (controller.Controller):
     
     def __init__(self, conversation, type):
         self.minutes = open("minutes.txt", 'w')
@@ -12,7 +13,7 @@ class Minuteman (jabbs.Controller):
         self.chair = None
         self.topics = []
         self.current_minute = None
-        jabbs.Controller.__init__(self, conversation, type)
+        controller.Controller.__init__(self, conversation, type)
         
     def controller(self):
         return [("I'm the scribe", self.set_scribe),
@@ -99,4 +100,4 @@ class Minute:
         return self.author+" says: "+"\n\t".join(self.text)+"\n"
         
 if __name__=="__main__":
-    jabbs.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Minuteman, rooms_to_join=["chats@conference.127.0.0.1"]).start()
+    core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Minuteman, rooms_to_join=["chats@conference.127.0.0.1"]).start()

@@ -1,8 +1,8 @@
-import jabbs
+from jabbs import controller, core
 
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
-class PoorBoy(jabbs.Controller):
+class PoorBoy(controller.Controller):
     
     def controller(self):
         return [("^bye", self.bye),
@@ -34,4 +34,4 @@ class PoorBoy(jabbs.Controller):
         return self.end("bye")
 
 if __name__=="__main__":
-    jabbs.Core("botiboti@127.0.0.1", "b3rb3r3ch0", PoorBoy).start()
+    core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", PoorBoy).start()

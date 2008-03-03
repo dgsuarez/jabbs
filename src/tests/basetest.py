@@ -1,13 +1,14 @@
 import unittest
 import re
-import jabbs as base
+import jabbs.core as base
+from jabbs import controller
 
 from pyxmpp.all import JID, Message
 
 class TestBase(unittest.TestCase):
 
     def setUp(self):
-        self.bot = base.Core("botiboti@127.0.0.1", "b3rb3r3ch0")
+        self.bot = base.Core("botiboti@127.0.0.1", "b3rb3r3ch0", controller.Controller)
 
     def test_jid(self):
         """Test creation of the bot"""
@@ -16,7 +17,7 @@ class TestBase(unittest.TestCase):
 
     def test_controller_from_bot_methods(self):
         """Test bot_ methods"""
-        sb = self.SampleBotMethod("", "")
+        sb = self.SampleBotMethod()
         self.assertEqual(base.controller_from_bot_methods(sb).sort(),
                          [("^bye.*", sb.bot_bye),("^hello.*", sb.bot_hello)].sort())
 
@@ -29,11 +30,11 @@ class TestBase(unittest.TestCase):
             if bot.dangerous_variable == 2:
                 bot.disconnect()
                 self.assertTrue(True)
-        bot = base.Core("botiboti@127.0.0.1", "b3rb3r3ch0")
+        bot = base.Core("botiboti@127.0.0.1", "b3rb3r3ch0", controller.Controller)
         bot.add_event(base.Event(call_me_twice, 1, 0, {"bot": bot}))
         bot.start()
 
-    class SampleBotMethod(base.Core):
+    class SampleBotMethod(controller.Controller):
         def bot_hello(self, message):
             return "hi"
         def bot_bye(self, message):
