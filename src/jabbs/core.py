@@ -2,14 +2,12 @@ import re
 import threading
 import Queue
 import logging
-import enum
+
+from messages import StanzaMessage, EndMessage, NoMessage
 
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 from pyxmpp.jabber.muc import MucRoomHandler, MucRoomManager
 from pyxmpp.jabber.client import JabberClient
-
-
-message_types = enum.Enum("stanza", "end", "none")
 
 
 class Core(JabberClient):
@@ -26,8 +24,6 @@ class Core(JabberClient):
         so with a suscribe presence stanza. Must return True/False
 
         """
-        self.__time_elapsed = 0
-        self.__events = []
         self.conversations = {}
         self.user_control = user_control
         self.jid = self.create_jid(jid)
@@ -114,11 +110,11 @@ class Core(JabberClient):
     
     def process_received(self, ans):
         """Process any kind of message stanza"""
-        if ans.type == message_types.end:
+        if ans.__class__ == EndMessage:
             self.send(ans.stanza)
-            del self.conversations[ans.stanza.get_from()]
-            self.logger.info("Conversation with %s ended", ans.stanza.get_from().as_string())
-        elif ans.type == message_types.none:
+            del self.conversations[ans.stanza.get_to()]
+            self.logger.info("Conversation with %s ended", ans.stanza.get_to().as_string())
+        elif ans.__class__ == NoMessage:
             return
         else:
             self.send(ans.stanza)
@@ -158,26 +154,15 @@ class Core(JabberClient):
         self.loop()
 
     def loop(self, timeout=1):
-        """Loop method, waits for client input and runs events"""
+        """Loop method, waits for client input and reacts to it"""
         while 1:
             stream = self.get_stream()
             if not stream:
                 break
             act = stream.loop_iter(timeout)
-            self.__time_elapsed += timeout
             self.check_for_answers()
             if not act:
-                self.check_events(timeout)
                 self.idle()
-
-    def check_events(self, step):
-        """Checks all events"""
-        for event in self.__events:
-            event.check(step)
-
-    def add_event(self, event):
-        """Adds a new event to the list of events"""
-        self.__events.append(event)
 
 
 class Conversation(threading.Thread):
@@ -198,20 +183,20 @@ class Conversation(threading.Thread):
             stanza = self.queues.queue_in.get()
             ans = self.get_reply(stanza)
             self.queues.queue_out.put(ans)
-    
-    def end(self):
-        """Ends the session with the user"""
-        self.__stop = True
         
     def get_reply(self, stanza):
         """Replies to stanza according to the controller"""
         for pat, fun in self.controller.controller():
             if re.compile(pat).match(stanza.get_body()):
-                ans=fun(stanza)
-                if ans.type == message_types.end:
+                ans = fun(stanza)
+                if ans.__class__ == EndMessage:
                     self.end()
                 return ans
-        return MessageWrapper(message_types.none)
+        return NoMessage()
+
+    def end(self):
+        """Ends the session with the user"""
+        self.__stop = True
     
     def get_next_stanza_id(self):
         """Returns next stanza id for the session"""
@@ -226,14 +211,6 @@ class Conversation(threading.Thread):
         self.controller.conversation = self
 
 
-class MessageWrapper:
-    """Wrapper for stanzas between the core and the conversations,
-    so additional information can be added"""
-    
-    def __init__(self, type=message_types.stanza, stanza=None):
-        self.stanza = stanza
-        self.type = type
-
 class ConversationQueues:
     """Queues needed for communicating the core and a conversation"""
     def __init__(self, queue_in, queue_out):
@@ -242,12 +219,13 @@ class ConversationQueues:
 
 
 class RoomHandler(MucRoomHandler):
-    
+    """Needed for MUC conversations"""
     def __init__(self, core):
         self.core = core
         self.logger = logging.getLogger("logger")
         
     def message_received(self, user, stanza):
+        """Receives a message from a groupchat and returns control back to core"""
         if self.room_state.get_nick() == stanza.get_from().resource:
             return
         self.logger.info("received stanza: "+ stanza.serialize())
@@ -255,31 +233,6 @@ class RoomHandler(MucRoomHandler):
         
     def error(self, stanza):
         self.logger.info("received error stanza: "+ stanza.serialize())
-            
-
-    
-
-class Event:
-    """Encapsulates an event: the function that should be called and the time
-    that needs to be elapsed between calls
-    
-    """
-    def __init__(self, fun, timeout, elapsed=0, args={}):
-        """Initializes an event with the callback function, the timeout of the call
-        and optionally elapsed time for the first call
-
-        """
-        self.fun = fun
-        self.timeout = timeout
-        self.elapsed = elapsed
-        self.args = args
-
-    def check(self, step):
-        """Checks if the callback should be made, and if it should it makes it"""
-        self.elapsed+=step
-        if self.elapsed >= self.timeout:
-            self.elapsed = 0
-            self.fun(**self.args)
 
 
 def controller_from_bot_methods(controller):
@@ -294,4 +247,3 @@ def controller_from_bot_methods(controller):
                                        and botregex.match(method)]
         regexes = ["^"+method[4:]+".*" for method in botmethods]
         return zip(regexes, [getattr(controller, method) for method in botmethods])
-

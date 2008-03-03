@@ -1,4 +1,5 @@
 import core
+from messages import StanzaMessage, EndMessage, NoMessage
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 
 class Controller:
@@ -27,21 +28,24 @@ class Controller:
         """Sample error handler"""
         print stanza
 
-    def message(self, body, type=core.message_types.stanza):
+    def message(self, body):
         """Creates a message to the jids associated with the controller"""
-        return core.MessageWrapper(stanza=Message(to_jid=self.conversation.jid, 
+        return StanzaMessage(stanza=Message(to_jid=self.conversation.jid, 
                                              body=body,
                                              stanza_type=self.type,
-                                             stanza_id=self.conversation.next_stanza_id),
-                              type=type)
+                                             stanza_id=self.conversation.next_stanza_id))
         
     def end(self, body):
         """Returns an end message"""
-        return self.message(body, core.message_types.end)
+        return EndMessage(stanza=Message(to_jid=self.conversation.jid, 
+                                             body=body,
+                                             stanza_type=self.type,
+                                             stanza_id=self.conversation.next_stanza_id))
+        
     
     def no_message(self):
         """Returns a no message"""
-        return self.message("", core.message_types.none)
+        return NoMessage()
     
 if __name__ == "__main__":
     core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", starter=Controller,rooms_to_join=["chats@conference.127.0.0.1"]).start()
