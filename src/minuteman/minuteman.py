@@ -4,13 +4,13 @@ from jabbs import controller, core
 
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
-from models import Minutes, Topic, Statement
+from models import Minutes, Topic, Statement, Participant
 import models
 
 class Minuteman (controller.Controller):
     
     def __init__(self, conversation, type):
-        self.session = models.init()
+        self.db_session = models.get_session()
         self.minutes = Minutes()
         self.current_minute = None
         controller.Controller.__init__(self, conversation, type)
@@ -32,7 +32,7 @@ class Minuteman (controller.Controller):
         if self.minutes.scribe:
             return self.message("Scribe is already set")
         self.minutes.scribe = stanza.get_from().resource
-        self.session.save(self.minutes)
+        self.db_session.save(self.minutes)
         return self.message("Scribe set to: "+self.minutes.scribe)
     
     def set_chair(self, stanza):
@@ -82,12 +82,17 @@ class Minuteman (controller.Controller):
         return self.no_message()
 
     def end_minutes(self, stanza):
-#        if self.conversation.room_state:
-#            attendees = self.conversation.room_state.users.keys()
-#            self.minutes.write("Attendees: "+",".join(attendees))
-        self.session.commit()
+        if self.conversation.room_state:
+            attendees = self.conversation.room_state.users.keys()
+            for i in attendees:
+                self.minutes.participants.append(Participant(i))
+        self.db_session.commit()
         return self.end("Minutes ended")
+
+class MinutesManager:
+    pass
 
 
 if __name__=="__main__":
     core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Minuteman, rooms_to_join=["chats@conference.127.0.0.1"]).start()
+    
