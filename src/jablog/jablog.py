@@ -4,9 +4,9 @@ from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
 class Jablog(controller.Controller):
     
-    def __init__(self, conversation, type):
+    def __init__(self, conversation):
         self.file = open("log.txt", 'w')
-        controller.Controller.__init__(self, conversation, type)
+        controller.Controller.__init__(self, conversation)
         
     def controller(self):
         return [("^end_logging", self.bye),

@@ -77,6 +77,12 @@ class Core(JabberClient):
         
     def start_conversation(self, jid, type="chat", room_state = None):
         """Spans a new thread for a new conversation, which is associated to jid"""
+        if not self.user_control(jid):
+            self.send(Message(to_jid=jid,
+                              type=type,
+                              from_jid=self.jid,
+                              body="You are not allowed to talk with me"))
+            return
         queue_out = Queue.Queue(5)
         queue_in = Queue.Queue(5)
         self.conversations[jid] = ConversationQueues(queue_in, queue_out)
@@ -170,8 +176,9 @@ class Conversation(threading.Thread):
     Multiple conversations can be run in parallel, one for each jid"""
     def __init__(self, jid, controller, controller_params, queues, type, room_state): 
         self.jid = jid
-        self.controller = controller(conversation=self, type=type, **controller_params)
+        self.controller = controller(conversation=self, **controller_params)
         self.queues = queues
+        self.type = type
         self.room_state = room_state
         self.__next_stanza_id = 0
         self.__stop = False
@@ -209,7 +216,29 @@ class Conversation(threading.Thread):
         """Transfers control to a new controller"""
         self.controller = controller
         self.controller.conversation = self
-
+        
+    def get_selection_from_options(self, options, text):
+        """Sends a list of posible options and returns the user's choice 
+        to the caller
+        
+        """
+        m = "\n".join("%s) %s" % (str(i), text) for i, text in options)
+        s = StanzaMessage(stanza=Message(to_jid=self.jid, 
+                                             body=text+"\n"+m,
+                                             stanza_type=self.type,
+                                             stanza_id=self.next_stanza_id))
+        self.queues.queue_out.put(s)
+        stanza = self.queues.queue_in.get()
+        try:
+            option = stanza.get_body().strip()
+            for o, t in options:
+                if str(o).strip() == option:
+                    return (o, t)
+            raise Exception()
+            
+        except:
+            return self.get_selection_from_options(options, "You must input a valid option\n"+text)
+            
 
 class ConversationQueues:
     """Queues needed for communicating the core and a conversation"""

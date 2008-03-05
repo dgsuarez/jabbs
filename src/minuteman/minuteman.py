@@ -9,11 +9,10 @@ import models
 
 class Minuteman (controller.Controller):
     
-    def __init__(self, conversation, type):
+    def __init__(self, conversation):
         self.db_session = models.get_session()
         self.minutes = Minutes()
-        self.current_minute = None
-        controller.Controller.__init__(self, conversation, type)
+        controller.Controller.__init__(self, conversation)
         
     def controller(self):
         return [("I'm the scribe", self.set_scribe),
@@ -89,10 +88,29 @@ class Minuteman (controller.Controller):
         self.db_session.commit()
         return self.end("Minutes ended")
 
-class MinutesManager:
-    pass
 
+class MinutesManager(controller.Controller):
+    
+    def __init__(self, conversation):
+        self.db_session = models.get_session()
+        controller.Controller.__init__(self, conversation)
+    
+    def controller(self):
+        return [("Show minutes", self.show_available_minutes),
+                ("Select minutes", self.select_minute_to_show)
+                ]
+        
+    def show_available_minutes(self, stanza):
+        return self.message("\n".join("%s: %s" % (str(i.date), i.title) for i in self.db_session.query(Minutes)))
+    
+    def select_minute_to_show(self, stanza):
+        options = [(i.id, i.title) for i in self.db_session.query(Minutes)]
+        id, title = self.conversation.get_selection_from_options(options, "Available minutes are:")
+        return self.message(
+                            str(self.db_session.query(Minutes).filter_by(id=id)[0])
+                            )
+    
 
 if __name__=="__main__":
-    core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Minuteman, rooms_to_join=["chats@conference.127.0.0.1"]).start()
+    core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", MinutesManager, rooms_to_join=["chats@conference.127.0.0.1"]).start()
     

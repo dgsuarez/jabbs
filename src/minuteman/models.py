@@ -91,6 +91,6 @@ def init():
     return sessionmaker(bind=mysql_db, autoflush=True, transactional=True)
     
 def get_session():
-    return session
+    return session()
     
 session = init()

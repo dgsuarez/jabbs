@@ -4,9 +4,8 @@ from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 
 class Controller:
     """Controller base class. Controllers must inherit from this one"""
-    def __init__(self, conversation=None, type="chat"):
+    def __init__(self, conversation=None):
         self.conversation = conversation
-        self.type = type
         
     def controller(self):
         """Sample default controller implementation. 
@@ -32,14 +31,14 @@ class Controller:
         """Creates a message to the jids associated with the controller"""
         return StanzaMessage(stanza=Message(to_jid=self.conversation.jid, 
                                              body=body,
-                                             stanza_type=self.type,
+                                             stanza_type=self.conversation.type,
                                              stanza_id=self.conversation.next_stanza_id))
         
     def end(self, body):
         """Returns an end message"""
         return EndMessage(stanza=Message(to_jid=self.conversation.jid, 
                                              body=body,
-                                             stanza_type=self.type,
+                                             stanza_type=self.conversation.type,
                                              stanza_id=self.conversation.next_stanza_id))
         
     
