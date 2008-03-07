@@ -5,7 +5,7 @@ from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 class Jablog(controller.Controller):
     
     def __init__(self, conversation):
-        self.file = open("log.txt", 'w')
+        self.file = open("%s@%s_log.txt" % (conversation.jid.node, conversation.jid.domain), 'a')
         controller.Controller.__init__(self, conversation)
         
     def controller(self):
@@ -17,6 +17,7 @@ class Jablog(controller.Controller):
         return self.no_message()
     
     def bye(self, stanza):
+        self.file.write("---------------------------------\n\n")
         self.file.close()
         return self.end("ended logging")
         

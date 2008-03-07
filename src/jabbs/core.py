@@ -238,8 +238,17 @@ class Conversation(threading.Thread):
             
         except:
             return self.get_selection_from_options(options, "You must input a valid option\n"+text)
-            
-
+    
+    def get_reply_to_question(self, question):
+        """Sends a question and returns the stanza answer of the user"""
+        s = StanzaMessage(stanza=Message(to_jid=self.jid, 
+                                             body=question,
+                                             stanza_type=self.type,
+                                             stanza_id=self.next_stanza_id))
+        self.queues.queue_out.put(s)
+        return self.queues.queue_in.get()
+    
+    
 class ConversationQueues:
     """Queues needed for communicating the core and a conversation"""
     def __init__(self, queue_in, queue_out):
