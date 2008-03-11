@@ -119,7 +119,10 @@ class Core(JabberClient):
         if ans.__class__ == EndMessage:
             self.send(ans.stanza)
             del self.conversations[ans.stanza.get_to()]
-            self.logger.info("Conversation with %s ended", ans.stanza.get_to().as_string())
+            self.logger.info("Conversation with %s@%s/%s ended", 
+                             ans.stanza.get_to().node, 
+                             ans.stanza.get_to().domain, 
+                             ans.stanza.get_to().resource)
         elif ans.__class__ == NoMessage:
             return
         else:
