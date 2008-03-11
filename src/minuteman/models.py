@@ -4,7 +4,6 @@ from sqlalchemy import create_engine
 from sqlalchemy import Table, Column, Integer, String, DateTime, MetaData, ForeignKey
 from sqlalchemy.orm import mapper, clear_mappers, relation, sessionmaker
 
-from exceptions import ScribeNotSetException, ScribeAlreadySetException
 
 
 class Minutes(object):

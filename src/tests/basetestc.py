@@ -1,5 +1,5 @@
 import unittest
-import clienttester
+from jabbs.testing import clienttester
 
 
 class TestBase(unittest.TestCase):

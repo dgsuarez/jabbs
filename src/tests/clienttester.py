@@ -74,7 +74,7 @@ class Tester(JabberClient):
             self.fail_count += 1
 
     def send(self, message, jid):
-        m = Message(to_jid=jid, body=message, thread="jabbsclienttester")
+        m = Message(to_jid=jid, body=message, stanza_type="chat")
         self.stream.send(m)
 
     def loop(self, timeout=1):
