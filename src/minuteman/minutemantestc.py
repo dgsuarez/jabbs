@@ -2,7 +2,7 @@ import unittest
 from jabbs.testing import clienttester
 
 
-class TestBase(unittest.TestCase):
+class TestMinuteman(unittest.TestCase):
 
     def test_minutes(self):
         """Tests adding a scribe, new minutes, etc"""

@@ -16,4 +16,4 @@ class Transferer(controller.Controller):
 
 
 if __name__=="__main__":
-    core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Transferer).start()
+    core.Core("transferer.cfg").start()

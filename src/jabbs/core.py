@@ -9,13 +9,15 @@ from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 from pyxmpp.jabber.muc import MucRoomHandler, MucRoomManager
 from pyxmpp.jabber.client import JabberClient
 
+import configparser
 
 class Core(JabberClient):
     """Core of the framework, handles connections and dispatches messages 
     to the corresponding Conversation"""
-    def __init__(self, jid, passwd, starter, starter_params={}, user_control=(lambda x:True), default_nick="botiboti", rooms_to_join=[]):
-        """Initializes the bot with jid (node@domain) and it's
-        password.
+    def __init__(self, config_path):
+        """Initializes the bot with data from a configuration file 
+        
+        jid (node@domain) and it's password.
 
         starter and starter_params are the class of the first controller to be used and
         it's params. If none is provided a default controller will be used.
@@ -24,15 +26,16 @@ class Core(JabberClient):
         so with a suscribe presence stanza. Must return True/False
 
         """
-        self.conversations = {}
-        self.user_control = user_control
-        self.jid = self.create_jid(jid)
-        self.default_nick = default_nick
-        self.__starter = starter
-        self.__starter_params = starter_params
         self.initialize_logger()
-        self.rooms_to_join = rooms_to_join
-        JabberClient.__init__(self, self.jid, passwd)
+        self.config = configparser.Config(config_path)
+        self.conversations = {}
+        self.user_control = self.config.user_control
+        self.jid = self.create_jid(self.config.jid)
+        self.nick = self.config.nick
+        self.__starter = self.config.starter
+        self.__starter_params = self.config.starter_params
+        self.rooms_to_join = self.config.rooms_to_join
+        JabberClient.__init__(self, self.jid, self.config.password)
 
     def initialize_logger(self):
         """Initializes logger"""
@@ -71,7 +74,7 @@ class Core(JabberClient):
         """Joins the room jid, starting a new thread for its messages"""
         room_jid=JID(jid)
         handler = RoomHandler(self)
-        self.mucman.join(room_jid, self.default_nick, handler)
+        self.mucman.join(room_jid, self.nick, handler)
         room_state = handler.room_state
         self.start_conversation(room_jid, "groupchat", room_state)
         
@@ -79,7 +82,7 @@ class Core(JabberClient):
         """Spans a new thread for a new conversation, which is associated to jid"""
         if not self.user_control(jid):
             self.send(Message(to_jid=jid,
-                              type=type,
+                              stanza_type=type,
                               from_jid=self.jid,
                               body="You are not allowed to talk with me"))
             return

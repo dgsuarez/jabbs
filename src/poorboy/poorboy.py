@@ -34,4 +34,4 @@ class PoorBoy(controller.Controller):
         return self.end("bye")
 
 if __name__=="__main__":
-    core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", PoorBoy).start()
+    core.Core("config.cfg").start()

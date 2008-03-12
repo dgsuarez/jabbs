@@ -22,4 +22,4 @@ class Jablog(controller.Controller):
         return self.end("ended logging")
         
 if __name__=="__main__":
-    core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", Jablog, rooms_to_join=["chats@conference.127.0.0.1"]).start()
+    core.Core("config.cfg").start()

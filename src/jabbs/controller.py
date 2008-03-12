@@ -47,4 +47,4 @@ class Controller:
         return NoMessage()
     
 if __name__ == "__main__":
-    core.Core("botiboti@127.0.0.1", "b3rb3r3ch0", starter=Controller,rooms_to_join=["chats@conference.127.0.0.1"]).start()
+    core.Core("prueba.cfg").start()
