@@ -9,7 +9,7 @@ import models
 
 class Minuteman (controller.Controller):
     
-    def __init__(self, conversation):
+    def __init__(self, conversation=None):
         self.db_session = models.get_session()
         self.minutes = Minutes()
         controller.Controller.__init__(self, conversation)
@@ -24,7 +24,8 @@ class Minuteman (controller.Controller):
                 ("^To be minuted: .*",self.add_statement),
                 ("\.\.\..*", self.continue_statement),
                 ("Show minutes", self.show_info),
-                ("End minutes", self.end_minutes)
+                ("End minutes", self.end_minutes),
+                ("Manage minutes", self.manage_minutes)
                 ]
         
     def set_scribe(self, stanza):
@@ -87,28 +88,45 @@ class Minuteman (controller.Controller):
                 self.minutes.participants.append(Participant(i))
         self.db_session.commit()
         return self.end("Minutes ended")
-
+    
+    def manage_minutes(self, stanza):
+        self.conversation.transfer(MinutesManager())
 
 class MinutesManager(controller.Controller):
     
-    def __init__(self, conversation):
+    def __init__(self, conversation=None):
         self.db_session = models.get_session()
         controller.Controller.__init__(self, conversation)
     
     def controller(self):
         return [("Show minutes", self.show_available_minutes),
-                ("Select minutes", self.select_minute_to_show)
+                ("Select minutes", self.select_minutes_to_show),
+                ("Remove minutes", self.remove_minutes),
+                ("Start minutes", self.start_minutes)
                 ]
         
     def show_available_minutes(self, stanza):
         return self.message("\n".join("%s: %s" % (str(i.date), i.title) for i in self.db_session.query(Minutes)))
     
-    def select_minute_to_show(self, stanza):
+    def select_minutes_to_show(self, stanza):
         options = [(i.id, i.title) for i in self.db_session.query(Minutes)]
         id, title = self.conversation.get_selection_from_options(options, "Available minutes are:")
         return self.message(
                             str(self.db_session.query(Minutes).filter_by(id=id)[0])
                             )
+        
+    def remove_minutes(self, stanza):
+        id, title = self.conversation.get_selection_from_options([(i.id, i.title) for i in self.db_session.query(Minutes)],
+                                                                 "Select minutes to remove:")
+        try:
+            self.db_session.delete(self.db_session.query(Minutes).filter_by(id=id)[0])
+            self.db_session.commit()
+        except:
+            self.message("Error deleting minutes with id %s" % id)
+        return self.message("Minutes with id %s removed" % id)
+    
+    def start_minutes(self, stanza):
+        self.conversation.transfer(Minuteman())
     
 
 if __name__=="__main__":
