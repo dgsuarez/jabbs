@@ -246,14 +246,26 @@ class Conversation(threading.Thread):
             return self.get_selection_from_options(options, "You must input a valid option\n"+text)
     
     def get_reply_to_question(self, question):
-        """Sends a question and returns the stanza answer of the user"""
+        """Sends a question and returns the answer of the user"""
         s = StanzaMessage(stanza=Message(to_jid=self.jid, 
                                              body=question,
                                              stanza_type=self.type,
                                              stanza_id=self.next_stanza_id))
         self.queues.queue_out.put(s)
-        return self.queues.queue_in.get()
+        return self.queues.queue_in.get().get_body()
     
+    def confirm(self, question):
+        """Sends a yes/no question and returns the stanza answer of the user"""
+        s = StanzaMessage(stanza=Message(to_jid=self.jid, 
+                                             body=question,
+                                             stanza_type=self.type,
+                                             stanza_id=self.next_stanza_id))
+        self.queues.queue_out.put(s)
+        if self.queues.queue_in.get().get_body().strip() == "yes":
+            return True
+        if self.queues.queue_in.get().get_body().strip() == "no":
+            return False
+        return self.confirm(question)
     
 class ConversationQueues:
     """Queues needed for communicating the core and a conversation"""
