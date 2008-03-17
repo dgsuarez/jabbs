@@ -6,6 +6,7 @@ from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
 from models import Minutes, Topic, Statement, Participant
 import models
+import messages
 
 class Minuteman (controller.Controller):
     
@@ -17,12 +18,12 @@ class Minuteman (controller.Controller):
     def controller(self):
         return [("I'm the scribe", self.set_scribe),
                 ("I am the scribe", self.set_scribe),
-                ("^Topic:.*", self.add_topic),
-                ("^Chair:.*", self.set_chair),
-                ("^Title:.*", self.set_title),
+                ("^Topic: (.*)", self.add_topic),
+                ("^Chair: (.*)", self.set_chair),
+                ("^Title: (.*)", self.set_title),
                 ("^Minutes info", self.show_info),
-                ("^To be minuted: .*",self.add_statement),
-                ("\.\.\..*", self.continue_statement),
+                ("^To be minuted: (.+?): (.+)",self.add_statement),
+                ("\.\.\.(.*)", self.continue_statement),
                 ("Show minutes", self.show_info),
                 ("End minutes", self.end_minutes),
                 ("Manage minutes", self.manage_minutes)
@@ -30,28 +31,32 @@ class Minuteman (controller.Controller):
         
     def set_scribe(self, stanza):
         if self.minutes.scribe:
-            return self.message("Scribe is already set")
+            return self.message(messages.scribe_already_set.render())
         self.minutes.scribe = stanza.get_from().resource
         self.db_session.save(self.minutes)
-        return self.message("Scribe set to: "+self.minutes.scribe)
+        return self.message(messages.field_set_to.render(field="Scribe", 
+                                                         value=self.minutes.scribe))
     
-    def set_chair(self, stanza):
+    def set_chair(self, stanza, chair):
         if not self.is_sent_by_scribe(stanza):
-            return self.message("Only the scribe can set the chair. If you havent, set a scribe")    
-        self.minutes.chair = re.sub("^Chair: ","",stanza.get_body())
-        return self.message("Chair is: "+self.minutes.chair)
+            return self.message(messages.only_scribe_can.render(action="set the chair"))    
+        self.minutes.chair = chair
+        return self.message(messages.position_set_to.render(position="Chair",
+                                                     name=self.minutes.chair))
     
-    def set_title(self, stanza):
+    def set_title(self, stanza, title):
         if not self.is_sent_by_scribe(stanza):
-            return self.message("Only the scribe can set the title. If you havent, set a scribe")    
-        self.minutes.title = re.sub("^Title: ", "", stanza.get_body())
-        return self.message("Title is: "+self.minutes.title)   
+            return self.message(messages.only_scribe_can.render(action="set the title"))    
+        self.minutes.title = title
+        return self.message(messages.field_set_to.render(field="Title", 
+                                                         value=self.minutes.title))  
         
-    def add_topic(self, stanza):
+    def add_topic(self, stanza, topic):
         if not self.is_sent_by_scribe(stanza):
-            return self.message("Only the scribe can set a topic. If you havent, set a scribe")    
-        self.minutes.topics.append(Topic(re.sub("^Topic: ","",stanza.get_body())))
-        return self.message("Topic is: "+self.minutes.topics[-1].title)
+            return self.message(messages.only_scribe_can.render(action="set a topic"))    
+        self.minutes.topics.append(Topic(topic))
+        return self.message(messages.field_set_to.render(field="Topic", 
+                                                         value=self.minutes.topics[-1].title))
     
     def is_sent_by_scribe(self, stanza):
         if stanza.get_from().resource == self.minutes.scribe:
@@ -62,23 +67,22 @@ class Minuteman (controller.Controller):
         ret = str(self.minutes)
         return self.message(ret)
 
-    def add_statement(self,stanza):
+    def add_statement(self, stanza, author, statement):
         if not self.is_sent_by_scribe(stanza):
-            return self.message("Only the scribe can add minutes. If you havent, set a scribe")
+            return self.message(messages.only_scribe_can.render(action="add minutes"))
         if len(self.minutes.topics) == 0:
-            return self.message("Before submiting a minute you must submit a topic")
-        parts = stanza.get_body().split(":",2)
-        self.minutes.topics[-1].statements.append(Statement(parts[1],parts[2]))
+            return self.message(messages.no_topic_for_minute.render())
+        self.minutes.topics[-1].statements.append(Statement(author, statement))
         return self.no_message()
     
-    def continue_statement(self, stanza):
+    def continue_statement(self, stanza, statement):
         if not self.is_sent_by_scribe(stanza):
             return self.no_message()
         if len(self.minutes.topics) == 0:
-            return self.message("Before submiting a minute you must submit a topic")
+            return self.message(messages.no_topic_for_minute.render())
         if len(self.minutes.topics[-1].statements) == 0:
-            return self.message("Before continuing a minute you must submit one")
-        self.minutes.topics[-1].statements[-1].text += ("\n%s" %(re.sub("^\.\.\.","",stanza.get_body())))
+            return self.message(messages.no_minute_to_continue.render())
+        self.minutes.topics[-1].statements[-1].text += ("\n%s" %(statement))
         return self.no_message()
 
     def end_minutes(self, stanza):
@@ -87,7 +91,7 @@ class Minuteman (controller.Controller):
             for i in attendees:
                 self.minutes.participants.append(Participant(i))
         self.db_session.commit()
-        return self.end("Minutes ended")
+        return self.end(messages.minutes_ended.render())
     
     def manage_minutes(self, stanza):
         self.conversation.transfer(MinutesManager())

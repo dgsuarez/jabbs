@@ -200,8 +200,9 @@ class Conversation(threading.Thread):
     def get_reply(self, stanza):
         """Replies to stanza according to the controller"""
         for pat, fun in self.controller.controller():
-            if re.compile(pat).match(stanza.get_body()):
-                ans = fun(stanza)
+            match = re.compile(pat).search(stanza.get_body())
+            if match:
+                ans = fun(stanza, *match.groups())
                 if ans.__class__ == EndMessage:
                     self.end()
                 return ans

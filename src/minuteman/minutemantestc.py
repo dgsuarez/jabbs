@@ -7,13 +7,13 @@ class TestMinuteman(unittest.TestCase):
     def test_minutes(self):
         """Tests adding a scribe, new minutes, etc"""
         conversation = [("hola", None),
-                        ("Chair: Diego", "Only the scribe can set the chair. If you havent, set a scribe"),
-                        ("I'm the scribe", "Scribe set to: Mibot"),
+                        ("Chair: Diego", "Only the scribe can set the chair. If you haven't, set a scribe"),
+                        ("I'm the scribe", "Scribe is: Mibot"),
                         ("I'm the scribe", "Scribe is already set"),
                         ("Chair: Diego", "Chair is: Diego"),
-                        ("Title: Las cosas que te cuento", "Title is: Las cosas que te cuento"),
+                        ("Title: Las cosas que te cuento", "Title set to: Las cosas que te cuento"),
                         ("To be minuted: Pepe: hola","Before submiting a minute you must submit a topic"),
-                        ("Topic: Prueba", "Topic is: Prueba"),
+                        ("Topic: Prueba", "Topic set to: Prueba"),
                         ("To be minuted: Pepe: hola",None),
                         ("... y adios", None),
                         ("End minutes", "Minutes ended")
@@ -26,6 +26,6 @@ class TestMinuteman(unittest.TestCase):
 
 
 
-suite = unittest.TestLoader().loadTestsFromTestCase(TestBase)
+suite = unittest.TestLoader().loadTestsFromTestCase(TestMinuteman)
 if __name__ == "__main__":
     unittest.main()
