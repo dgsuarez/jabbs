@@ -64,8 +64,7 @@ class Minuteman (controller.Controller):
         return False
 
     def show_info(self, stanza):
-        ret = str(self.minutes)
-        return self.message(ret)
+        return self.message(messages.show_minutes.render(minutes=self.minutes))
 
     def add_statement(self, stanza, author, statement):
         if not self.is_sent_by_scribe(stanza):
@@ -110,24 +109,23 @@ class MinutesManager(controller.Controller):
                 ]
         
     def show_available_minutes(self, stanza):
-        return self.message("\n".join("%s: %s" % (str(i.date), i.title) for i in self.db_session.query(Minutes)))
+        return self.message(messages.show_available_minutes.render(minutes_list=self.db_session.query(Minutes)))
     
     def select_minutes_to_show(self, stanza):
         options = [(i.id, i.title) for i in self.db_session.query(Minutes)]
-        id, title = self.conversation.get_selection_from_options(options, "Available minutes are:")
-        return self.message(
-                            str(self.db_session.query(Minutes).filter_by(id=id)[0])
-                            )
+        id, title = self.conversation.get_selection_from_options(options, messages.available_minutes_are.render())
+        return self.message(messages.show_minutes.render(minutes=self.db_session.query(Minutes).filter_by(id=id)[0]))
+                            
         
     def remove_minutes(self, stanza):
         id, title = self.conversation.get_selection_from_options([(i.id, i.title) for i in self.db_session.query(Minutes)],
-                                                                 "Select minutes to remove:")
+                                                                 messages.select_minutes_to_remove.render())
         try:
             self.db_session.delete(self.db_session.query(Minutes).filter_by(id=id)[0])
             self.db_session.commit()
         except:
-            self.message("Error deleting minutes with id %s" % id)
-        return self.message("Minutes with id %s removed" % id)
+            self.message(messages.error_deleting.render(id=id))
+        return self.message(messages.minutes_deleted.render(id=id))
     
     def start_minutes(self, stanza):
         self.conversation.transfer(Minuteman())
