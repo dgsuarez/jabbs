@@ -124,7 +124,7 @@ class MinutesManager(controller.Controller):
             self.db_session.delete(self.db_session.query(Minutes).filter_by(id=id)[0])
             self.db_session.commit()
         except:
-            self.message(messages.error_deleting.render(id=id))
+            return self.message(messages.error_deleting.render(id=id))
         return self.message(messages.minutes_deleted.render(id=id))
     
     def start_minutes(self, stanza):

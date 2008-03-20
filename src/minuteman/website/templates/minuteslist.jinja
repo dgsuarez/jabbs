@@ -1,0 +1,25 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+    <title>Available minutes</title>
+</head>
+<body>
+		<h1>Available minutes</h1>
+		<ul>
+				{% for minute in minutes %}
+				<li>
+				<h2><a href="/{{minute.id}}">{{minute.title}}</a></h2>
+				<dl>
+						<dt>Date</dt>
+						<dd>{{minute.date}}</dd>
+						<dt>Chair</dt>
+						<dd>{{minute.chair}}</dd>
+				</dl>
+				</li>
+				{% else %}
+				<li><strong>No minutes available</strong></li>
+				{% endfor %}
+		</ul>
+</body>
+</html>
