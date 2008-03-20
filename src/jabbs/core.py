@@ -111,7 +111,7 @@ class Core(JabberClient):
             
     def received_groupchat(self, user, stanza):
         """Handler for groupchat messages"""
-        self.logger.info("Received %s message from %s", stanza.get_from().as_string())
+        self.logger.info("Received %s message from %s", stanza.get_type(), stanza.get_from().as_string())
         if not stanza.get_body():
             self.logger.info("Message was empty")
             return
