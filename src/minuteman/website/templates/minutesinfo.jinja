@@ -3,6 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
     <title>{{minutes.title}}</title>
+    <link rel="stylesheet" href="static/style.css" type="text/css" media="all" />
 </head>
 <body>
 		<h1>{{minutes.title}}</h1>
@@ -14,10 +15,15 @@
 			<dt>Scribe</dt>
 			<dd>{{minutes.scribe}}</dd>
 			<dt>Participants</dt>
-			<dd><ul>{% for participant in minutes.participants %}
+			<dd><ul>
+				{% for participant in minutes.participants %}
 				<li>{{participant.name}}</li>
-				{% endfor %}</ul>
+				{% else %}
+				<li>Just a one on one conversation</li>
+				{% endfor %}
+				</ul>
 			</dd>
+		</dl>
 			<ul>
 			{% for topic in minutes.topics %}
 				<li><h3>{{topic.title}}</h3>
@@ -29,6 +35,5 @@
 			<li>Nothing was minuted</li>
 			{% endfor %}
 			</ul>
-		</dl>
 </body>
 </html>

@@ -1,0 +1,28 @@
+/* Edited with EditCSS */
+
+body {
+  margin: 0 0 0 0;
+  font-family: Verdana;
+  background-color: #DED7D3
+}
+
+h1 {
+  margin: 0 0 0 0;
+  padding: 1em 1em 0.5em 0;
+  text-align: right;
+  background-color: #AD1D1D; 
+}
+dl {
+  padding-left: 1em;
+}
+dt:after {
+  content: ":";
+}
+
+dt {
+  font-weight: bold;
+}
+
+li {
+ list-style-type: none;
+}
