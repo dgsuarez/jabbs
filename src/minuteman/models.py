@@ -7,7 +7,7 @@ from sqlalchemy.orm import mapper, clear_mappers, relation, sessionmaker
 
 
 class Minutes(object):
-    def __init__(self, scribe="", chair="", title=""):
+    def __init__(self, scribe="", chair="", title="No title"):
         self.scribe = scribe
         self.chair = chair
         self.title = title

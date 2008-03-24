@@ -1,5 +1,8 @@
 import logging
 
+class ParseError(Exception):
+    pass
+
 class Config:
     
     def __init__(self, path):
@@ -14,10 +17,11 @@ class Config:
             self.password = conf["password"]
         except:
             logger.error("JID and password must be provided in configuration file")
+            raise ParseError
         module, modclass = self.__read_starter(conf, logger)
         self.starter_params = conf.get("starter params", {})
         self.__read_user_control(conf)
-        self.nick = conf.get("nick", "")
+        self.nick = conf.get("nick", "botiboti")
         self.rooms_to_join = conf.get("rooms to join", [])
 
     def __read_starter(self, conf, logger):
@@ -28,6 +32,7 @@ class Config:
             self.starter = getattr(module, modclass[1])
         except:
             logger.error("Valid starter controller must be provided in configuration file")
+            raise ParserError
         return module, modclass
 
     def __read_user_control(self, conf):
