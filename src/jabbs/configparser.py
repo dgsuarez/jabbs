@@ -32,7 +32,7 @@ class Config:
             self.starter = getattr(module, modclass[1])
         except:
             logger.error("Valid starter controller must be provided in configuration file")
-            raise ParserError
+            raise ParseError
         return module, modclass
 
     def __read_user_control(self, conf):

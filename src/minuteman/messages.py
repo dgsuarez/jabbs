@@ -1,19 +1,15 @@
-from jinja import Environment
-
-env = Environment()
-
-scribe_already_set = env.from_string("Scribe is already set")
-field_set_to = env.from_string("{{field}} set to: {{value}}")
-position_set_to = env.from_string("{{position}} is: {{name}}")
-only_scribe_can = env.from_string("Only the scribe can {{action}}. If you haven't, set a scribe")
-no_topic_for_minute = env.from_string("Before submiting a minute you must submit a topic")
-no_minute_to_continue = env.from_string("Before continuing a minute you must submit one")
-minutes_ended = env.from_string("Minutes ended")
-error_deleting = env.from_string("Error deleting minutes with id {{id}}")
-minutes_deleted = env.from_string("Minutes with id {{id}} deleted")
-select_minutes_to_remove = env.from_string("Select minutes to delete")
-available_minutes_are = env.from_string("Available minutes are")
-show_available_minutes = env.from_string("""\
+scribe_already_set = "Scribe is already set"
+field_set_to = "{{field}} set to: {{value}}"
+position_set_to = "{{position}} is: {{name}}"
+only_scribe_can = "Only the scribe can {{action}}. If you haven't, set a scribe"
+no_topic_for_minute = "Before submiting a minute you must submit a topic"
+no_minute_to_continue = "Before continuing a minute you must submit one"
+minutes_ended = "Minutes ended"
+error_deleting = "Error deleting minutes with id {{id}}"
+minutes_deleted = "Minutes with id {{id}} deleted"
+select_minutes_to_remove = "Select minutes to delete"
+available_minutes_are = "Available minutes are"
+show_available_minutes = """\
 {% for minutes in minutes_list %}
 Title: {{minutes.title}}
 Chair: {{minutes.chair}}
@@ -24,8 +20,8 @@ Date: {{minutes.date}}
 No minutes available
 {% endfor %}
 
-""")
-show_minutes = env.from_string("""\
+"""
+show_minutes = """\
 Title: {{minutes.title}}
 Chair: {{minutes.chair}}
 Scribe: {{minutes.scribe}}
@@ -38,4 +34,4 @@ Participants: {% for person in minutes.participants %}{{person.name}}, {% endfor
 {% else %}
 No minutes
 {% endfor %}
-""")
+"""
