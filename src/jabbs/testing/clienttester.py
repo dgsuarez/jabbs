@@ -1,3 +1,5 @@
+import re
+
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 from pyxmpp.jabber.client import JabberClient
 
@@ -19,6 +21,7 @@ class Tester(JabberClient):
             jid_ = JID(jid_.node, jid_.domain, "Mibot")
         JabberClient.__init__(self, jid_, passwd)
         self.send_next = True
+        self.failed_messages = []
 
     def start(self):
         """Starts the conversation. Returns True if every answer was right,
@@ -27,7 +30,7 @@ class Tester(JabberClient):
         """
         self.connect()
         self.loop()
-        return self.fail_count == 0
+        return self.failed_messages
 
     def session_started(self):
         JabberClient.session_started(self)
@@ -37,8 +40,9 @@ class Tester(JabberClient):
         if not stanza.get_body():
             return 
         self.send_next = True
-        if stanza.get_body() != self.expected:
+        if not re.compile(self.expected).search(stanza.get_body()):
             self.fail_count += 1
+            self.failed_messages.append((self.expected, stanza.get_body()))
 
     def send(self, message, jid):
         m = Message(to_jid=jid, body=message, stanza_type="chat")

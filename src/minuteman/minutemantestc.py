@@ -6,6 +6,20 @@ class TestMinuteman(unittest.TestCase):
 
     def test_minutes(self):
         """Tests adding a scribe, new minutes, etc"""
+        result = """Title: Las cosas que te cuento
+Chair: Diego
+Scribe: Mibot
+Date: .*
+Participants: 
+
+Prueba
+Pepe: hola
+ y adios
+Maria: Lo que te estoy contando
+Juan: Lo que me estas contando
+ es muy interesante
+
+"""
         conversation = [("hola", None),
                         ("Chair: Diego", "Only the scribe can set the chair. If you haven't, set a scribe"),
                         ("I'm the scribe", "Scribe set to: Mibot"),
@@ -19,13 +33,14 @@ class TestMinuteman(unittest.TestCase):
                         ("To be minuted: Maria: Lo que te estoy contando",None),
                         ("To be minuted: Juan: Lo que me estas contando",None),
                         ("... es muy interesante",None),
+                        ("Show minutes", result),
                         ("End minutes", "Minutes ended")
                         ]
         c = clienttester.Tester("gramparsons@127.0.0.1", 
                                 "b3rb3r3ch0", 
                                 "botiboti@127.0.0.1", 
                                 conversation)
-        self.assertTrue(c.start())
+        self.assertEquals([], c.start())
 
 
 

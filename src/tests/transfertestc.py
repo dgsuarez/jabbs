@@ -9,7 +9,7 @@ class TestBase(unittest.TestCase):
         c = clienttester.Tester("gramparsons@127.0.0.1", "b3rb3r3ch0", 
                                 "botiboti@127.0.0.1", 
                                 [("hola pepe", "hi"),("adios", "bye pepe"),("hola", "hola"), ("adios pepe", "adios pepe")])
-        self.assertTrue(c.start())
+        self.assertEquals([], c.start())
 
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestBase)
