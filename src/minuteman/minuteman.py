@@ -1,19 +1,16 @@
-import re
-
-from jabbs import controller, core, util
-
-from pyxmpp.all import JID,Iq,Presence,Message,StreamError
+from jabbs import util, controller, core
 
 from models import Minutes, Topic, Statement, Participant
 import models
 import messages
+
+util.jinja_messages_from_strings(messages)
 
 class Minuteman(controller.Controller):
     
     def __init__(self, conversation=None):
         self.db_session = models.get_session()
         self.minutes = Minutes()
-        util.messages_from_string(messages)
         controller.Controller.__init__(self, conversation)
         
     def controller(self):

@@ -6,21 +6,20 @@ class PoorBoy(controller.Controller):
     
     def controller(self):
         return [("^bye", self.bye),
-                (".*", self.change_person)]
+                ("(.*)", self.change_person)]
     
-    def change_person(self, stanza):
-        substitutions = [("you", "i"),
+    def change_person(self, stanza, body):
+        substitutions = [("you", "I"),
                      ("are", "am"),
                      ("me","you"),
                      ("am", "are"),
                      ("i", "you"),
-                     ("you're", "i'm"),
+                     ("you're", "I'm"),
                      ("i'm", "you're"),
                      ("your", "my"),
                      ("my", "your")
                      ]
-        body = stanza.get_body()
-        s_body = [[word, False] for word in body.split()]
+        s_body = [[word.lower(), False] for word in body.split()]
         
         for o, n in substitutions:
             for l in s_body:

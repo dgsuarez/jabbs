@@ -14,11 +14,10 @@ def controller_from_bot_methods(controller):
         regexes = ["^"+method[4:]+".*" for method in botmethods]
         return zip(regexes, [getattr(controller, method) for method in botmethods])
 
-def messages_from_string(obj):
+def jinja_messages_from_strings(obj):
     """Converts all strings in a module or object into jinja templates"""
     env = jinja.Environment()
     for message in dir(obj):
         if type(getattr(obj, message)) == types.StringType and message[0] != "_":
-            print message, type(message), getattr(obj,message), message.__class__
             setattr(obj, message, env.from_string(getattr(obj,message)))
             
