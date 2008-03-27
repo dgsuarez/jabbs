@@ -1,14 +1,39 @@
+import itertools
+
 from jabbs import controller, core
 
-from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
 class PoorBoy(controller.Controller):
     
     def controller(self):
         return [("^bye", self.bye),
-                ("(.*)", self.change_person)]
+                ("(.*)", self.get_answer)]
     
-    def change_person(self, stanza, body):
+    def get_answer(self, stanza, body):
+        a = self.is_greeting(body)
+        if a:
+            return self.message(a)
+        a = self.ask_about_parents(body)
+        if a:
+            return self.message(a)
+        return self.message(self.ask_about(body))
+
+    def is_greeting(self, body):
+        greetings = ("hi", "hello")
+        for i in greetings:
+            if i in body:
+                return "Hi"
+        return False 
+    
+    def ask_about_parents(self, body):
+        mother = ("mother", "mom", "mommy")
+        father = ("father", "dad", "daddy")
+        for i in itertools.chain(mother, father):
+            if i in body:
+                return "What about your %s" % i
+        return False
+    
+    def ask_about(self, body):
         substitutions = [("you", "I"),
                      ("are", "am"),
                      ("me","you"),
@@ -20,14 +45,15 @@ class PoorBoy(controller.Controller):
                      ("my", "your")
                      ]
         s_body = [[word.lower(), False] for word in body.split()]
-        
+        if s_body[0][0] == "because":
+            s_body = s_body[1:]
         for o, n in substitutions:
             for l in s_body:
                 if o == l[0] and not l[1]:
                     l[0]=n
                     l[1]=True
         body = " ".join([l[0] for l in s_body])
-        return self.message("I know " + body)
+        return "Tell me more about why %s" % body
     
     def bye(self, stanza):
         return self.end("bye")
