@@ -1,32 +1,30 @@
 import core
-from messages import StanzaMessage, EndMessage, NoMessage
+from messages import *
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 
-class Controller:
-    """Controller base class. Controllers must inherit from this one"""
-    def __init__(self, conversation=None):
+class Dispatcher:
+    """Dispatcher base class. Dispatchers must inherit from this one"""
+    def __init__(self, conversation):
         self.conversation = conversation
-        
-    def controller(self):
-        """Sample default controller implementation. 
+            
+    def dispatcher(self):
+        """Must be overriden. 
             It returns a list of the form [(regex, method), ...] 
         received messages will be matched against the regexs and the
         corresponding method will be called in the first one that 
         matches
         
         """
-        return [(r".*", self.default)]
-    
-    def default(self, stanza):
-        """Sample default response, acts as an echo bot"""
-        if self.conversation.room_state:
-            print self.conversation.room_state.users
-        return self.message(stanza.get_body())
+        return []
 
     def error_handler(self, stanza):
         """Sample error handler"""
         print stanza
 
+class Messenger: 
+    def __init__(self, conversation_info):
+        self.conversation = conversation_info
+        
     def message(self, body):
         """Creates a message to the jids associated with the controller"""
         return StanzaMessage(stanza=Message(to_jid=self.conversation.jid, 
@@ -45,6 +43,15 @@ class Controller:
     def no_message(self):
         """Returns a no message"""
         return NoMessage()
+    
+    def ask_yes_no_question(self, question, callback):
+        return YesNoQuestion(question, callback)
+    
+    def ask_question(self, question):
+        return Question(question, callback)
+    
+    def ask_multiple_choice_question(self, question, choices, callback):
+        return MultipleChoiceQuestion(question, choices, callback)
     
 if __name__ == "__main__":
     core.Core("prueba.cfg").start()

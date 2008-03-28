@@ -3,7 +3,7 @@ import threading
 import Queue
 import logging
 
-from messages import StanzaMessage, EndMessage, NoMessage
+import messages
 
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 from pyxmpp.jabber.muc import MucRoomHandler, MucRoomManager
@@ -119,14 +119,14 @@ class Core(JabberClient):
     
     def process_received(self, ans):
         """Process any kind of message stanza"""
-        if ans.__class__ == EndMessage:
+        if ans.__class__ == messages.EndMessage:
             self.send(ans.stanza)
             del self.conversations[ans.stanza.get_to()]
             self.logger.info("Conversation with %s@%s/%s ended", 
                              ans.stanza.get_to().node, 
                              ans.stanza.get_to().domain, 
                              ans.stanza.get_to().resource)
-        elif ans.__class__ == NoMessage:
+        elif ans.__class__ == messages.NoMessage:
             return
         else:
             self.send(ans.stanza)
@@ -177,17 +177,29 @@ class Core(JabberClient):
                 self.idle()
 
 
-class Conversation(threading.Thread):
-    """Conversation thread. Takes care of a single conversation.
-    Multiple conversations can be run in parallel, one for each jid"""
-    def __init__(self, jid, controller, controller_params, queues, type, room_state): 
+class ConversationInfo:
+    """Information about a conversation"""
+    def __init__(self, jid, type, room_state):
         self.jid = jid
-        self.controller = controller(conversation=self, **controller_params)
-        self.queues = queues
         self.type = type
         self.room_state = room_state
         self.__next_stanza_id = 0
+        
+    def get_next_stanza_id(self):
+        """Returns next stanza id for the session"""
+        self.__next_stanza_id += 1
+        return "jabbsconv%d" % self.__next_stanza_id
+    next_stanza_id=property(get_next_stanza_id)
+    
+    
+class Conversation(threading.Thread):
+    """Conversation thread. Takes care of a single conversation.
+    Multiple conversations can be run in parallel, one for each jid"""
+    def __init__(self, jid, dispatcher, dispatcher_params, queues, type, room_state): 
+        self.info = ConversationInfo(jid, type, room_state)
+        self.queues = queues
         self.__stop = False
+        self.transfer(dispatcher(self, **dispatcher_params))
         threading.Thread.__init__(self)
     
     def run(self):
@@ -199,41 +211,49 @@ class Conversation(threading.Thread):
         
     def get_reply(self, stanza):
         """Replies to stanza according to the controller"""
-        for pat, fun in self.controller.controller():
+        for pat, fun in self.dispatcher.dispatcher():
             match = re.compile(pat).search(stanza.get_body())
             if match:
                 ans = fun(stanza, *match.groups())
-                if ans.__class__ == EndMessage:
-                    self.end()
-                return ans
-        return NoMessage()
+                return self.process_answer(ans)
+        return messages.NoMessage()
 
+    def process_answer(self, ans):
+        """Processes an answer from the user"""
+        if ans.__class__ == messages.Question:
+            qans = self.ask_question(ans.question)
+            return self.process_answer(ans.callback(qans))
+        elif ans.__class__ == messages.YesNoQuestion:
+            ynans = self.ask_yes_no_question(ans.question)
+            return self.process_answer(ans.callback(ynans))
+        elif ans.__class__ == messages.MultipleChoiceQuestion:
+            mcqans = self.ask_multiple_choice_question(ans.options, ans.question)
+            return self.process_answer(ans.callback(*mcqans))
+        elif ans.__class__ == messages.EndMessage:
+            self.end()
+        return ans
+    
     def end(self):
         """Ends the session with the user"""
         self.__stop = True
     
-    def get_next_stanza_id(self):
-        """Returns next stanza id for the session"""
-        self.__next_stanza_id += 1
-        return "jabbsconv%d" % self.__next_stanza_id
+
     
-    next_stanza_id=property(get_next_stanza_id)
-    
-    def transfer(self, controller):
+    def transfer(self, dispatcher):
         """Transfers control to a new controller"""
-        self.controller = controller
-        self.controller.conversation = self
+        self.dispatcher = dispatcher
+        self.dispatcher.conversation = self
         
-    def get_selection_from_options(self, options, text):
+    def ask_multiple_choice_question(self, options, text):
         """Sends a list of posible options and returns the user's choice 
         to the caller
         
         """
         m = "\n".join("%s) %s" % (str(i), text) for i, text in options)
-        s = StanzaMessage(stanza=Message(to_jid=self.jid, 
+        s = messages.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
                                              body=text+"\n"+m,
-                                             stanza_type=self.type,
-                                             stanza_id=self.next_stanza_id))
+                                             stanza_type=self.info.type,
+                                             stanza_id=self.info.next_stanza_id))
         self.queues.queue_out.put(s)
         stanza = self.queues.queue_in.get()
         try:
@@ -244,29 +264,29 @@ class Conversation(threading.Thread):
             raise Exception()
             
         except:
-            return self.get_selection_from_options(options, "You must input a valid option\n"+text)
+            return self.ask_multiple_choice_question(options, "You must input a valid option\n"+text)
     
-    def get_reply_to_question(self, question):
+    def ask_question(self, question):
         """Sends a question and returns the answer of the user"""
-        s = StanzaMessage(stanza=Message(to_jid=self.jid, 
+        s = messages.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
                                              body=question,
-                                             stanza_type=self.type,
-                                             stanza_id=self.next_stanza_id))
+                                             stanza_type=self.info.type,
+                                             stanza_id=self.info.next_stanza_id))
         self.queues.queue_out.put(s)
         return self.queues.queue_in.get().get_body()
     
-    def confirm(self, question):
+    def ask_yes_no_question(self, question):
         """Sends a yes/no question and returns the stanza answer of the user"""
-        s = StanzaMessage(stanza=Message(to_jid=self.jid, 
+        s = messages.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
                                              body=question,
-                                             stanza_type=self.type,
-                                             stanza_id=self.next_stanza_id))
+                                             stanza_type=self.info.type,
+                                             stanza_id=self.info.next_stanza_id))
         self.queues.queue_out.put(s)
         if self.queues.queue_in.get().get_body().strip() == "yes":
             return True
         if self.queues.queue_in.get().get_body().strip() == "no":
             return False
-        return self.confirm(question)
+        return self.ask_yes_no_question(question)
     
 class ConversationQueues:
     """Queues needed for communicating the core and a conversation"""
