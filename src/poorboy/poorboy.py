@@ -1,13 +1,17 @@
 import itertools
 
-from jabbs import controller, core
+from jabbs import basic, core
 
 
-class PoorBoy(controller.Controller):
-    
-    def controller(self):
-        return [("^bye", self.bye),
-                ("(.*)", self.get_answer)]
+class PoorDispatcher(basic.Dispatcher):
+    def __init__(self, conversation):
+        self.poor = PoorBoy(conversation.info)
+        
+    def dispatcher(self):
+        return [("^bye", self.poor.bye),
+                ("(.*)", self.poor.get_answer)]
+        
+class PoorBoy(basic.Messenger):
     
     def get_answer(self, stanza, body):
         a = self.is_greeting(body)

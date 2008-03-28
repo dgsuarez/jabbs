@@ -8,7 +8,7 @@ class Transferer(controller.Controller):
         return self.message("hi")
 
     def adios(self, stanza):
-        self.conversation.transfer(controller.Controller())
+        self.conversation.transfer(controller.Dispatcher())
         return self.message("bye "+self.name)
 
     def controller(self):
