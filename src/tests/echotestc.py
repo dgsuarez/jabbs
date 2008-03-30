@@ -5,7 +5,7 @@ from jabbs.testing import clienttester
 class TestBase(unittest.TestCase):
 
     def test_echo_conversation(self):
-        """Default bot behaviour is just an echo bot"""
+        """test a simple echo bot"""
         c = clienttester.Tester("gramparsons@127.0.0.1", "b3rb3r3ch0", 
                                 "botiboti@127.0.0.1", 
                                 [("hola", "hola"),("adios", "adios")])

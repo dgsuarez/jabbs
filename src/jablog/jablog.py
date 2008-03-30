@@ -1,6 +1,5 @@
 from jabbs import core, basic
 
-from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 
 class JablogDispatcher(basic.Dispatcher):
     
@@ -26,5 +25,7 @@ class Jablog(basic.Messenger):
         self.file.write("---------------------------------\n\n")
         self.file.close()
         return self.end("ended logging")
+    
+
 if __name__=="__main__":
     core.Core("config.cfg").start()

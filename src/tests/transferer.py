@@ -1,18 +1,26 @@
-from jabbs import controller, core
+from jabbs import basic, core
+import echo
 
-from pyxmpp.all import JID,Iq,Presence,Message,StreamError
+class Dispatcher(basic.Dispatcher):
+    
+    def __init__(self, conversation):
+        self.trans = Transferer(conversation.info)
+        basic.Dispatcher.__init__(self, conversation)
+    
+    def adios(self, stanza):
+        self.conversation.transfer(echo.Dispatcher(self.conversation))
+        return self.trans.adios(stanza)
+    
+    def dispatcher(self):
+        return [("hola (.+)", self.trans.hola), ("adios", self.adios)] 
 
-class Transferer(controller.Controller):
-    def hola(self, stanza):
-        self.name = stanza.get_body()[5:]
+class Transferer(basic.Messenger):
+    def hola(self, stanza, name):
+        self.name = name
         return self.message("hi")
 
     def adios(self, stanza):
-        self.conversation.transfer(controller.Dispatcher())
         return self.message("bye "+self.name)
-
-    def controller(self):
-        return [("hola", self.hola), ("adios", self.adios)]
 
 
 if __name__=="__main__":
