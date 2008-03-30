@@ -1,18 +1,7 @@
 import jinja
 import types
+import basic
 
-def controller_from_bot_methods(controller):
-        """Takes all methods of the instance in the form bot_* and returns
-        a controller list in the form [(regex matching the name of the
-        method without bot_, method)]
-
-        """
-        botregex = re.compile(r"^bot_.+")
-        botmethods = [method for method in dir(controller) 
-                                    if callable(getattr(controller,method))
-                                       and botregex.match(method)]
-        regexes = ["^"+method[4:]+".*" for method in botmethods]
-        return zip(regexes, [getattr(controller, method) for method in botmethods])
 
 def jinja_messages_from_strings(obj):
     """Converts all strings in a module or object into jinja templates"""

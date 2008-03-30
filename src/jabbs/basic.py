@@ -21,23 +21,24 @@ class Dispatcher:
         """Sample error handler"""
         print stanza
 
+
 class Messenger: 
     def __init__(self, conversation_info):
-        self.conversation = conversation_info
+        self.conversation_info = conversation_info
         
     def message(self, body):
         """Creates a message to the jids associated with the controller"""
-        return StanzaMessage(stanza=Message(to_jid=self.conversation.jid, 
+        return StanzaMessage(stanza=Message(to_jid=self.conversation_info.jid, 
                                              body=body,
-                                             stanza_type=self.conversation.type,
-                                             stanza_id=self.conversation.next_stanza_id))
+                                             stanza_type=self.conversation_info.type,
+                                             stanza_id=self.conversation_info.next_stanza_id))
         
     def end(self, body):
         """Returns an end message"""
-        return EndMessage(stanza=Message(to_jid=self.conversation.jid, 
+        return EndMessage(stanza=Message(to_jid=self.conversation_info.jid, 
                                              body=body,
-                                             stanza_type=self.conversation.type,
-                                             stanza_id=self.conversation.next_stanza_id))
+                                             stanza_type=self.conversation_info.type,
+                                             stanza_id=self.conversation_info.next_stanza_id))
         
     
     def no_message(self):
@@ -47,11 +48,8 @@ class Messenger:
     def ask_yes_no_question(self, question, callback):
         return YesNoQuestion(question, callback)
     
-    def ask_question(self, question):
+    def ask_question(self, question, callback):
         return Question(question, callback)
     
     def ask_multiple_choice_question(self, question, choices, callback):
         return MultipleChoiceQuestion(question, choices, callback)
-    
-if __name__ == "__main__":
-    core.Core("prueba.cfg").start()

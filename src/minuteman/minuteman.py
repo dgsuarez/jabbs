@@ -111,8 +111,8 @@ class Minuteman(basic.Messenger):
         return self.no_message()
 
     def end_minutes(self, stanza):
-        if self.conversation.room_state:
-            attendees = self.conversation.room_state.users.keys()
+        if self.conversation_info.room_state:
+            attendees = self.conversation_info.room_state.users.keys()
             for i in attendees:
                 self.minutes.participants.append(Participant(i))
         self.db_session.commit()
