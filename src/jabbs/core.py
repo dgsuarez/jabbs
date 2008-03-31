@@ -85,7 +85,7 @@ class Core(JabberClient):
                               stanza_type=type,
                               from_jid=self.jid,
                               body="You are not allowed to talk with me"))
-            return
+            return False
         queue_out = Queue.Queue(5)
         queue_in = Queue.Queue(5)
         self.conversations[jid] = ConversationQueues(queue_in, queue_out)
@@ -98,6 +98,7 @@ class Core(JabberClient):
                      ).start()
         self.logger.info("Started new conversation with %s@%s", jid.node, jid.domain)
         self.logger.debug("Thread list: %s", threading.enumerate())
+        return True
         
     def received_chat(self, stanza):
         """Handler for chat messages"""
@@ -106,7 +107,8 @@ class Core(JabberClient):
             self.logger.info("Message was empty")
             return
         if stanza.get_from() not in self.conversations.keys():
-            self.start_conversation(stanza.get_from())
+            if not self.start_conversation(stanza.get_from()):
+                return
         self.conversations[stanza.get_from()].queue_out.put(stanza.copy())
             
     def received_groupchat(self, user, stanza):
