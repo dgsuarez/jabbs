@@ -6,8 +6,8 @@ class Dispatcher(basic.Dispatcher):
         self.asker = Asker(conversation.info)
     
     def dispatcher(self):
-        return [("regular", self.asker.yesno),
-                ("yesno", self.asker.regular),
+        return [("regular", self.asker.regular),
+                ("yesno", self.asker.yesno),
                 ("choice", self.asker.choice)
                 ]
     

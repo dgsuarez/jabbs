@@ -222,13 +222,13 @@ class Conversation(threading.Thread):
         """Processes an answer from the user"""
         if ans.__class__ == messages.Question:
             qans = self.ask_question(ans.question)
-            return self.process_answer(ans.callback(qans))
+            return ans.callback(qans)
         elif ans.__class__ == messages.YesNoQuestion:
             ynans = self.ask_yes_no_question(ans.question)
-            return self.process_answer(ans.callback(ynans))
+            return ans.callback(ynans)
         elif ans.__class__ == messages.MultipleChoiceQuestion:
             mcqans = self.ask_multiple_choice_question(ans.options, ans.question)
-            return self.process_answer(ans.callback(*mcqans))
+            return ans.callback(*mcqans)
         elif ans.__class__ == messages.EndMessage:
             self.end()
         return ans
@@ -282,11 +282,12 @@ class Conversation(threading.Thread):
                                              stanza_type=self.info.type,
                                              stanza_id=self.info.next_stanza_id))
         self.queues.queue_out.put(s)
-        if self.queues.queue_in.get().get_body().strip() == "yes":
+        ans = self.queues.queue_in.get().get_body().strip()
+        if ans == "yes":
             return True
-        if self.queues.queue_in.get().get_body().strip() == "no":
+        if ans == "no":
             return False
-        return self.ask_yes_no_question(question)
+        return self.ask_yes_no_question("Please answer yes or no\n"+question)
     
 class ConversationQueues:
     """Queues needed for communicating the core and a conversation"""

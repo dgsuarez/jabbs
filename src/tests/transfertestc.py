@@ -2,7 +2,7 @@ import unittest
 from jabbs.testing import clienttester
 
 
-class TestBase(unittest.TestCase):
+class TestTransfer(unittest.TestCase):
 
     def test_transference(self):
         """Tests transference from one controller to another"""
@@ -12,6 +12,5 @@ class TestBase(unittest.TestCase):
         self.assertEquals([], c.start())
 
 
-suite = unittest.TestLoader().loadTestsFromTestCase(TestBase)
 if __name__ == "__main__":
     unittest.main()

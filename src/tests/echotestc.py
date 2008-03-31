@@ -2,7 +2,7 @@ import unittest
 from jabbs.testing import clienttester
 
 
-class TestBase(unittest.TestCase):
+class TestEcho(unittest.TestCase):
 
     def test_echo_conversation(self):
         """test a simple echo bot"""
@@ -13,6 +13,5 @@ class TestBase(unittest.TestCase):
 
 
 
-suite = unittest.TestLoader().loadTestsFromTestCase(TestBase)
 if __name__ == "__main__":
     unittest.main()
