@@ -7,28 +7,30 @@ class TestCounter(unittest.TestCase):
 
     def test_counter_conversation(self):
         """test concurrent access"""
+
         c1 = clienttester.Tester("gramparsons@127.0.0.1", "b3rb3r3ch0", 
-                                "botiboti@127.0.0.1", 
-                                [("next", "1"),
-                                 ("next", "2"),
-                                 ("next", "3"),
-                                 ("next", "4"),
-                                 ("next", "5"),
-                                 ("bye", "bye")])
+                                "botiboti@127.0.0.1",
+                                [("next1", "1"),
+                                 ("next2", "2"),
+                                 ("next3", "3"),
+                                 ("next4", "4"),
+                                 ("next5", "5"),
+                                 ("bye", "bye")] 
+                                )
         c2 = clienttester.Tester("curris@127.0.0.1", "b3rb3r3ch0", 
                                 "botiboti@127.0.0.1", 
-                                [("next", "1"),
-                                 ("next", "2"),
-                                 ("next", "3"),
-                                 ("next", "4"),
-                                 ("next", "5"),
+                                [("next1", "1"),
+                                 ("next2", "2"),
+                                 ("next3", "3"),
+                                 ("next4", "4"),
+                                 ("next5", "5"),
                                  ("bye", "bye")])
         t1 = TestThread(c1)
         t2 = TestThread(c2)
         t1.start()
         t2.start()
-        while (t1.isAlive() and t2.isAlive()):
-            pass
+        t1.join()
+        t2.join()
         self.assertEquals([], t1.result)
         self.assertEquals([], t2.result)
 

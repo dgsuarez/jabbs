@@ -101,7 +101,7 @@ class Core(JabberClient):
         
     def received_chat(self, stanza):
         """Handler for chat messages"""
-        self.logger.info("Received %s message from %s@%s",stanza.get_type(), stanza.get_from().node, stanza.get_from().domain)
+        self.logger.info("Received %s ",stanza.serialize())
         if not stanza.get_body():
             self.logger.info("Message was empty")
             return
