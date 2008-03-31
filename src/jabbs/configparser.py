@@ -31,7 +31,7 @@ class Config:
             module = __import__(modclass[0])
             self.starter = getattr(module, modclass[1])
         except:
-            logger.error("Valid starter controller must be provided in configuration file")
+            logger.error("Valid starter dispatcher must be provided in configuration file")
             raise ParseError
         return module, modclass
 
@@ -43,7 +43,5 @@ class Config:
             modclassfun = user_control_str.rsplit(".",2)
             module = __import__(modclassfun[0])
             class_ = getattr(module, modclassfun[1])
-            self.user_control = class_().user_control
+            self.user_control = class_().user_control 
 
-if __name__ == "__main__":
-    Config("prueba.cfg")
