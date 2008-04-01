@@ -46,10 +46,13 @@ class Messenger:
         return NoMessage()
     
     def ask_yes_no_question(self, question, callback):
+        """Returns a yes/no question"""
         return YesNoQuestion(question, callback)
     
     def ask_question(self, question, callback):
+        """Returns a regular question"""
         return Question(question, callback)
     
     def ask_multiple_choice_question(self, question, choices, callback):
+        """Returns a multiple choice question"""
         return MultipleChoiceQuestion(question, choices, callback)

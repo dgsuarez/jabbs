@@ -79,7 +79,9 @@ class Core(JabberClient):
         self.start_conversation(room_jid, "groupchat", room_state)
         
     def start_conversation(self, jid, type="chat", room_state = None):
-        """Spans a new thread for a new conversation, which is associated to jid"""
+        """Spans a new thread for a new conversation, which is associated to jid
+        Checks if the jid is allowed to use the application using user_control
+        """
         if not self.user_control(jid):
             self.send(Message(to_jid=jid,
                               stanza_type=type,
@@ -133,8 +135,8 @@ class Core(JabberClient):
         else:
             self.send(ans.stanza)
     
-    def check_for_answers(self):
-        """Checks if answers from conversations are available. If so 
+    def check_for_messages(self):
+        """Checks if messages from conversations are available. If so 
         calls process_received to process them
         
         """
@@ -174,7 +176,7 @@ class Core(JabberClient):
             if not stream:
                 break
             act = stream.loop_iter(timeout)
-            self.check_for_answers()
+            self.check_for_messages()
             if not act:
                 self.idle()
 
@@ -242,7 +244,7 @@ class Conversation(threading.Thread):
 
     
     def transfer(self, dispatcher):
-        """Transfers control to a new controller"""
+        """Transfers control to a new dispatcher"""
         self.dispatcher = dispatcher
         self.dispatcher.conversation = self
         

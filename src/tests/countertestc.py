@@ -6,7 +6,7 @@ from jabbs.testing import clienttester
 class TestCounter(unittest.TestCase):
 
     def test_counter_conversation(self):
-        """test concurrent access"""
+        """test concurrent access to stateful objects"""
 
         c1 = clienttester.Tester("gramparsons@127.0.0.1", "b3rb3r3ch0", 
                                 "botiboti@127.0.0.1",

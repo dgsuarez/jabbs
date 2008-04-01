@@ -5,7 +5,10 @@ from jabbs.testing import clienttester
 class TestAsker(unittest.TestCase):
 
     def test_asking_conversation(self):
-        """Test asker"""
+        """Test ask system with yes/no, regular and multiple choice
+        questions
+        
+        """
         c = clienttester.Tester("gramparsons@127.0.0.1", "b3rb3r3ch0", 
                                 "botiboti@127.0.0.1", 
                                 [("regular", "Is it correct?"),

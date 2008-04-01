@@ -9,6 +9,7 @@ class DummyControl:
 class TestParser(unittest.TestCase):
     
     def test_parse_file(self):
+        """Test parsing of a config file"""
         cfg = Config("configparser.cfg")
         self.assertEquals(cfg.jid,"botiboti@127.0.0.1")
         self.assertEquals(cfg.password,"b3rb3r3ch0")
