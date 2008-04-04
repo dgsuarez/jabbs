@@ -35,6 +35,7 @@ class Core(JabberClient):
         self.__starter = self.config.starter
         self.__starter_params = self.config.starter_params
         self.rooms_to_join = self.config.rooms_to_join
+        self.start_on_user_connect = self.config.start_on_user_connect
         JabberClient.__init__(self, self.jid, self.config.password)
 
     def initialize_logger(self):
@@ -51,7 +52,8 @@ class Core(JabberClient):
         if not jid_.resource:
             return JID(jid_.node, jid_.domain, self.__class__.__name__)
         return jid_
-        
+    
+    
     def session_started(self):
         """Triggered when the session starts. Sets some event handlers and
         connects to indicated rooms
@@ -60,10 +62,12 @@ class Core(JabberClient):
         JabberClient.session_started(self)
         self.stream.set_message_handler("chat", self.received_chat)
         self.stream.set_message_handler("error", self.error_received)
-        self.stream.set_presence_handler("subscribe",self.received_presence)
-        self.stream.set_presence_handler("unsubscribe",self.received_presence)
-        self.stream.set_presence_handler("subscribed",self.received_presence)
-        self.stream.set_presence_handler("unsubscribed",self.received_presence)
+        self.stream.set_presence_handler(None,self.presence_received)
+        self.stream.set_presence_handler("unavailable",self.unavailable_received)
+        self.stream.set_presence_handler("subscribe",self.subscription_received)
+        self.stream.set_presence_handler("unsubscribe",self.subscription_received)
+        self.stream.set_presence_handler("subscribed",self.subscription_received)
+        self.stream.set_presence_handler("unsubscribed",self.subscription_received)
         self.logger.info("Session started")
         self.mucman = MucRoomManager(self.stream)
         self.mucman.set_handlers()
@@ -111,7 +115,7 @@ class Core(JabberClient):
         if stanza.get_from() not in self.conversations.keys():
             if not self.start_conversation(stanza.get_from()):
                 return
-        self.conversations[stanza.get_from()].queue_out.put(stanza.copy())
+        self.conversations[stanza.get_from()].queue_out.put(messages.StanzaMessage(stanza.copy()))
             
     def received_groupchat(self, user, stanza):
         """Handler for groupchat messages"""
@@ -119,7 +123,7 @@ class Core(JabberClient):
         if not stanza.get_body():
             self.logger.info("Message was empty")
             return
-        self.conversations[stanza.get_from().bare()].queue_out.put(stanza.copy())
+        self.conversations[stanza.get_from().bare()].queue_out.put(messages.StanzaMessage(stanza.copy()))
     
     def process_received(self, ans):
         """Process any kind of message stanza"""
@@ -143,17 +147,29 @@ class Core(JabberClient):
         for jid, queues in self.conversations.items():
             try:
                 ans = queues.queue_in.get(False)
-                self.process_received(ans)
+                if ans:
+                    self.process_received(ans)
             except:
                 pass
         
-    def received_presence(self, stanza):
+    def subscription_received(self, stanza):
         """Handler for subscription stanzas"""
         self.logger.info("Received %s request from %s", stanza.get_type(), stanza.get_from())
         if self.user_control(stanza.get_from()):
             self.send(stanza.make_accept_response())
         else:
             self.send(stanza.make_deny_response())
+            
+    def presence_received(self, stanza):
+        if stanza.get_from() in self.conversations:
+            return
+        if self.start_on_user_connect:
+            if not self.start_conversation(stanza.get_from()):
+                return
+        self.conversations[stanza.get_from()].queue_out.put(messages.UserConnected())
+            
+    def unavailable_received(self, stanza):
+         self.conversations[stanza.get_from()].queue_out.put(messages.UserDisconnected())
         
     def error_received(self, stanza):
         """Handler for error messages"""
@@ -213,17 +229,29 @@ class Conversation(threading.Thread):
             ans = self.get_reply(stanza)
             self.queues.queue_out.put(ans)
         
-    def get_reply(self, stanza):
-        """Replies to stanza according to the controller"""
+    def get_reply(self, message):
+        """Replies to stanza according to the dispatcher"""
+        if "stanza" in dir(message):
+            return self.process_message_with_stanza(message)
+        else:
+            return self.process_message_without_stanza(message)
+    
+    def process_message_without_stanza(self, message):
+        if message.__class__ == messages.UserConnected:
+            return self.dispatcher.on_user_connect()
+        elif message.__class__ == messages.UserDisconnected:
+            return self.dispatcher.on_user_disconnect()
+        
+    def process_message_with_stanza(self, message):
         for pat, fun in self.dispatcher.dispatcher():
-            match = re.compile(pat).search(stanza.get_body())
+            match = re.compile(pat).search(message.stanza.get_body())
             if match:
-                ans = fun(stanza, *match.groups())
-                return self.process_answer(ans)
+                ans = fun(message.stanza, *match.groups())
+                return self.process_message_to_send(ans)
         return messages.NoMessage()
-
-    def process_answer(self, ans):
-        """Processes an answer from the user"""
+    
+    def process_message_to_send(self, ans):
+        """Processes a message from the user"""
         if ans.__class__ == messages.Question:
             qans = self.ask_question(ans.question)
             return ans.callback(qans)

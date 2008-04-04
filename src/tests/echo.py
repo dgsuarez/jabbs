@@ -4,6 +4,7 @@ class Dispatcher(basic.Dispatcher):
     
     def dispatcher(self):
         return [("(.*)", Echo(self.conversation.info).echo)]
+
     
 class Echo(basic.Messenger):
     def echo(self, stanza, text):

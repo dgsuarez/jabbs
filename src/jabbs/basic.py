@@ -20,12 +20,17 @@ class Dispatcher:
     def error_handler(self, stanza):
         """Sample error handler"""
         print stanza
-
+        
+    def on_user_connect(self):
+        pass
+    
+    def on_user_disconnect(self):
+        pass
 
 class Messenger: 
     def __init__(self, conversation_info):
-        self.conversation_info = conversation_info
-        
+        self.conversation_info = conversation_info    
+    
     def message(self, body):
         """Creates a message to the jids associated with the controller"""
         return StanzaMessage(stanza=Message(to_jid=self.conversation_info.jid, 

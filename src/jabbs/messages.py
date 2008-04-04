@@ -2,6 +2,11 @@ class NoMessage:
     """No message has been sent"""
     pass
 
+class UserConnected:
+    pass
+
+class UserDisconnected:
+    pass
 
 class StanzaMessage:
     """Regular stanza"""

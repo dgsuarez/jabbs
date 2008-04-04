@@ -23,6 +23,11 @@ class Config:
         self.__read_user_control(conf)
         self.nick = conf.get("nick", "botiboti")
         self.rooms_to_join = conf.get("rooms to join", [])
+        self.start_on_user_connect = conf.get("start on user connect", None)
+        if self.start_on_user_connect == "yes":
+            self.start_on_user_connect = True
+        else:
+            self.start_on_user_connect = False
 
     def __read_starter(self, conf, logger):
         try:
