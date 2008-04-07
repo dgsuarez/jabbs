@@ -3,7 +3,7 @@ import threading
 import Queue
 import logging
 
-import messages
+import messagetypes
 
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 from pyxmpp.jabber.muc import MucRoomHandler, MucRoomManager

@@ -1,5 +1,5 @@
 import core
-from messages import *
+from messagetypes import *
 from pyxmpp.all import JID, Iq, Presence, Message, StreamError
 
 class Dispatcher:
