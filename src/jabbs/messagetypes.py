@@ -14,10 +14,8 @@ class StanzaMessage:
         self.stanza = stanza
 
 
-class EndMessage:
+class EndMessage(StanzaMessage):
     """Ending message and a stanza"""
-    def __init__(self, stanza):
-        self.stanza = stanza
 
 class Question:
     """Base class for question messages: Question to be asked and callback function

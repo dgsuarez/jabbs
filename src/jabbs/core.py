@@ -115,7 +115,7 @@ class Core(JabberClient):
         if stanza.get_from() not in self.conversations.keys():
             if not self.start_conversation(stanza.get_from()):
                 return
-        self.conversations[stanza.get_from()].queue_out.put(messages.StanzaMessage(stanza.copy()))
+        self.conversations[stanza.get_from()].queue_out.put(messagetypes.StanzaMessage(stanza.copy()))
             
     def received_groupchat(self, user, stanza):
         """Handler for groupchat messages"""
@@ -123,20 +123,21 @@ class Core(JabberClient):
         if not stanza.get_body():
             self.logger.info("Message was empty")
             return
-        self.conversations[stanza.get_from().bare()].queue_out.put(messages.StanzaMessage(stanza.copy()))
+        self.conversations[stanza.get_from().bare()].queue_out.put(messagetypes.StanzaMessage(stanza.copy()))
     
     def process_received(self, ans):
         """Process any kind of message stanza"""
-        if ans.__class__ == messages.EndMessage:
+        if ans.__class__ == messagetypes.EndMessage:
             self.send(ans.stanza)
             del self.conversations[ans.stanza.get_to()]
             self.logger.info("Conversation with %s@%s/%s ended", 
                              ans.stanza.get_to().node, 
                              ans.stanza.get_to().domain, 
                              ans.stanza.get_to().resource)
-        elif ans.__class__ == messages.NoMessage:
+        elif ans.__class__ == messagetypes.NoMessage:
             return
         else:
+
             self.send(ans.stanza)
     
     def check_for_messages(self):
@@ -149,7 +150,7 @@ class Core(JabberClient):
                 ans = queues.queue_in.get(False)
                 if ans:
                     self.process_received(ans)
-            except:
+            except Queue.Empty:
                 pass
         
     def subscription_received(self, stanza):
@@ -163,13 +164,16 @@ class Core(JabberClient):
     def presence_received(self, stanza):
         if stanza.get_from() in self.conversations:
             return
-        if self.start_on_user_connect:
-            if not self.start_conversation(stanza.get_from()):
-                return
-        self.conversations[stanza.get_from()].queue_out.put(messages.UserConnected())
+        if not self.start_on_user_connect:
+            return
+        if not self.start_conversation(stanza.get_from()):
+            return
+        self.conversations[stanza.get_from()].queue_out.put(messagetypes.UserConnected())
             
     def unavailable_received(self, stanza):
-         self.conversations[stanza.get_from()].queue_out.put(messages.UserDisconnected())
+        if not stanza.get_from() in self.conversations:
+            return
+        self.conversations[stanza.get_from()].queue_out.put(messagetypes.UserDisconnected())
         
     def error_received(self, stanza):
         """Handler for error messages"""
@@ -231,15 +235,15 @@ class Conversation(threading.Thread):
         
     def get_reply(self, message):
         """Replies to stanza according to the dispatcher"""
-        if "stanza" in dir(message):
+        if isinstance(message, messagetypes.StanzaMessage):
             return self.process_message_with_stanza(message)
         else:
             return self.process_message_without_stanza(message)
     
     def process_message_without_stanza(self, message):
-        if message.__class__ == messages.UserConnected:
+        if isinstance(message, messagetypes.UserConnected):
             return self.dispatcher.on_user_connect()
-        elif message.__class__ == messages.UserDisconnected:
+        elif isinstance(message, messagetypes.UserDisconnected):
             return self.dispatcher.on_user_disconnect()
         
     def process_message_with_stanza(self, message):
@@ -248,78 +252,76 @@ class Conversation(threading.Thread):
             if match:
                 ans = fun(message.stanza, *match.groups())
                 return self.process_message_to_send(ans)
-        return messages.NoMessage()
+        return messagetypes.NoMessage()
     
-    def process_message_to_send(self, ans):
+    def process_message_to_send(self, to_send):
         """Processes a message from the user"""
-        if ans.__class__ == messages.Question:
-            qans = self.ask_question(ans.question)
-            return ans.callback(qans)
-        elif ans.__class__ == messages.YesNoQuestion:
-            ynans = self.ask_yes_no_question(ans.question)
-            return ans.callback(ynans)
-        elif ans.__class__ == messages.MultipleChoiceQuestion:
-            mcqans = self.ask_multiple_choice_question(ans.options, ans.question)
-            return ans.callback(*mcqans)
-        elif ans.__class__ == messages.EndMessage:
+        if isinstance(to_send, messagetypes.MultipleChoiceQuestion):
+            ans = self.ask_multiple_choice_question(to_send.question, to_send.options)
+            return to_send.callback(*ans)
+        elif isinstance(to_send, messagetypes.YesNoQuestion):
+            ans = self.ask_yes_no_question(to_send.question)
+            return to_send.callback(ans)
+        elif isinstance(to_send, messagetypes.Question):
+            ans = self.ask_question(to_send.question)
+            return to_send.callback(ans)
+        elif isinstance(to_send, messagetypes.EndMessage):
             self.end()
-        return ans
+        return to_send
     
     def end(self):
         """Ends the session with the user"""
         self.__stop = True
-    
 
-    
     def transfer(self, dispatcher):
         """Transfers control to a new dispatcher"""
         self.dispatcher = dispatcher
         self.dispatcher.conversation = self
         
-    def ask_multiple_choice_question(self, options, text):
+    def ask_multiple_choice_question(self, text, options):
         """Sends a list of posible options and returns the user's choice 
         to the caller
         
         """
         m = "\n".join("%s) %s" % (str(i), text) for i, text in options)
-        s = messages.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
+        s = messagetypes.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
                                              body=text+"\n"+m,
                                              stanza_type=self.info.type,
                                              stanza_id=self.info.next_stanza_id))
         self.queues.queue_out.put(s)
-        stanza = self.queues.queue_in.get()
+        stanza = self.queues.queue_in.get().stanza
         try:
             option = stanza.get_body().strip()
             for o, t in options:
                 if str(o).strip() == option:
                     return (o, t)
-            raise Exception()
+            raise Exception, "Options not well formed"
             
         except:
-            return self.ask_multiple_choice_question(options, "You must input a valid option\n"+text)
+            return self.ask_multiple_choice_question("You must input a valid option\n"+text, options)
     
-    def ask_question(self, question):
+    def ask_question(self, text):
         """Sends a question and returns the answer of the user"""
-        s = messages.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
-                                             body=question,
+        s = messagetypes.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
+                                             body=text,
                                              stanza_type=self.info.type,
                                              stanza_id=self.info.next_stanza_id))
         self.queues.queue_out.put(s)
-        return self.queues.queue_in.get().get_body()
+        return self.queues.queue_in.get().stanza.get_body()
     
-    def ask_yes_no_question(self, question):
+    def ask_yes_no_question(self, text):
         """Sends a yes/no question and returns the stanza answer of the user"""
-        s = messages.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
-                                             body=question,
+        s = messagetypes.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
+                                             body=text,
                                              stanza_type=self.info.type,
                                              stanza_id=self.info.next_stanza_id))
         self.queues.queue_out.put(s)
-        ans = self.queues.queue_in.get().get_body().strip()
+        ans = self.queues.queue_in.get().stanza.get_body().strip()
         if ans == "yes":
             return True
         if ans == "no":
             return False
-        return self.ask_yes_no_question("Please answer yes or no\n"+question)
+        return self.ask_yes_no_question("Please answer yes or no\n"+text)
     
 class ConversationQueues:
     """Queues needed for communicating the core and a conversation"""
