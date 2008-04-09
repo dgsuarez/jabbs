@@ -60,7 +60,7 @@ class Core(JabberClient):
         
         """
         JabberClient.session_started(self)
-        self.stream.set_message_handler("chat", self.received_chat)
+        self.stream.set_message_handler("chat", self.chat_received)
         self.stream.set_message_handler("error", self.error_received)
         self.stream.set_presence_handler(None,self.presence_received)
         self.stream.set_presence_handler("unavailable",self.unavailable_received)
@@ -106,7 +106,7 @@ class Core(JabberClient):
         self.logger.debug("Thread list: %s", threading.enumerate())
         return True
         
-    def received_chat(self, stanza):
+    def chat_received(self, stanza):
         """Handler for chat messages"""
         self.logger.info("Received %s ",stanza.serialize())
         if not stanza.get_body():
@@ -117,7 +117,7 @@ class Core(JabberClient):
                 return
         self.conversations[stanza.get_from()].queue_out.put(messagetypes.StanzaMessage(stanza.copy()))
             
-    def received_groupchat(self, user, stanza):
+    def groupchat_received(self, user, stanza):
         """Handler for groupchat messages"""
         self.logger.info("Received %s message from %s", stanza.get_type(), stanza.get_from().as_string())
         if not stanza.get_body():
@@ -125,8 +125,8 @@ class Core(JabberClient):
             return
         self.conversations[stanza.get_from().bare()].queue_out.put(messagetypes.StanzaMessage(stanza.copy()))
     
-    def process_received(self, ans):
-        """Process any kind of message stanza"""
+    def process_conversation_message(self, ans):
+        """Process any kind of message stanza coming from a conversation"""
         if ans.__class__ == messagetypes.EndMessage:
             self.send(ans.stanza)
             del self.conversations[ans.stanza.get_to()]
@@ -137,7 +137,6 @@ class Core(JabberClient):
         elif ans.__class__ == messagetypes.NoMessage:
             return
         else:
-
             self.send(ans.stanza)
     
     def check_for_messages(self):
@@ -149,7 +148,7 @@ class Core(JabberClient):
             try:
                 ans = queues.queue_in.get(False)
                 if ans:
-                    self.process_received(ans)
+                    self.process_conversation_message(ans)
             except Queue.Empty:
                 pass
         
@@ -162,6 +161,7 @@ class Core(JabberClient):
             self.send(stanza.make_deny_response())
             
     def presence_received(self, stanza):
+        """Handler for initial presence received from users"""
         if stanza.get_from() in self.conversations:
             return
         if not self.start_on_user_connect:
@@ -171,6 +171,7 @@ class Core(JabberClient):
         self.conversations[stanza.get_from()].queue_out.put(messagetypes.UserConnected())
             
     def unavailable_received(self, stanza):
+        """Handler for unavailable presence received from users"""
         if not stanza.get_from() in self.conversations:
             return
         self.conversations[stanza.get_from()].queue_out.put(messagetypes.UserDisconnected())
@@ -234,19 +235,21 @@ class Conversation(threading.Thread):
             self.queues.queue_out.put(ans)
         
     def get_reply(self, message):
-        """Replies to stanza according to the dispatcher"""
+        """Processes received messages from the core"""
         if isinstance(message, messagetypes.StanzaMessage):
-            return self.process_message_with_stanza(message)
+            return self.get_reply_to_stanza(message)
         else:
-            return self.process_message_without_stanza(message)
+            return self.get_reply_to_status_change(message)
     
-    def process_message_without_stanza(self, message):
+    def get_reply_to_status_change(self, message):
+        """Calls connection methods on the dispatcher"""
         if isinstance(message, messagetypes.UserConnected):
             return self.dispatcher.on_user_connect()
         elif isinstance(message, messagetypes.UserDisconnected):
             return self.dispatcher.on_user_disconnect()
         
-    def process_message_with_stanza(self, message):
+    def get_reply_to_stanza(self, message):
+        """Replies to stanza according to the dispatcher"""
         for pat, fun in self.dispatcher.dispatcher():
             match = re.compile(pat).search(message.stanza.get_body())
             if match:
@@ -256,6 +259,14 @@ class Conversation(threading.Thread):
     
     def process_message_to_send(self, to_send):
         """Processes a message from the user"""
+        if isinstance(to_send, messagetypes.Question):
+            return self.ask_question(to_send)
+        elif isinstance(to_send, messagetypes.EndMessage):
+            self.end()
+        return to_send
+
+    def ask_question(self, to_send):
+        """Asks questions to the user"""
         if isinstance(to_send, messagetypes.MultipleChoiceQuestion):
             ans = self.ask_multiple_choice_question(to_send.question, to_send.options)
             return to_send.callback(*ans)
@@ -263,11 +274,8 @@ class Conversation(threading.Thread):
             ans = self.ask_yes_no_question(to_send.question)
             return to_send.callback(ans)
         elif isinstance(to_send, messagetypes.Question):
-            ans = self.ask_question(to_send.question)
+            ans = self.ask_regular_question(to_send.question)
             return to_send.callback(ans)
-        elif isinstance(to_send, messagetypes.EndMessage):
-            self.end()
-        return to_send
     
     def end(self):
         """Ends the session with the user"""
@@ -300,7 +308,7 @@ class Conversation(threading.Thread):
         except:
             return self.ask_multiple_choice_question("You must input a valid option\n"+text, options)
     
-    def ask_question(self, text):
+    def ask_regular_question(self, text):
         """Sends a question and returns the answer of the user"""
         s = messagetypes.StanzaMessage(stanza=Message(to_jid=self.info.jid, 
                                              body=text,
