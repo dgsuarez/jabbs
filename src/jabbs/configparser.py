@@ -17,7 +17,7 @@ class Config:
             self.password = conf["password"]
         except:
             logger.error("JID and password must be provided in configuration file")
-            raise ParseError
+            raise ParseError, "JID and password must be provided in configuration file"
         module, modclass = self.__read_starter(conf, logger)
         self.starter_params = conf.get("starter params", {})
         self.__read_user_control(conf)
@@ -29,7 +29,8 @@ class Config:
         else:
             self.start_on_user_connect = False
 
-    def __read_starter(self, conf, logger):
+    def __read_starter(self, conf):
+        logger = logging.getLogger("logger")
         try:
             self.starter_str = conf["starter"]
             modclass = self.starter_str.rsplit(".", 1)
@@ -37,7 +38,7 @@ class Config:
             self.starter = getattr(module, modclass[1])
         except:
             logger.error("Valid starter dispatcher must be provided in configuration file")
-            raise ParseError
+            raise ParseError, "Valid starter dispatcher must be provided in configuration file"
         return module, modclass
 
     def __read_user_control(self, conf):

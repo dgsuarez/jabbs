@@ -19,7 +19,7 @@ class Dispatcher:
 
     def error_handler(self, stanza):
         """Sample error handler"""
-        print stanza
+        print stanza.serialize()
         
     def on_user_connect(self):
         pass
