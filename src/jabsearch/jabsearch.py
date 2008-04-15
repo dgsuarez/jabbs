@@ -32,7 +32,6 @@ class JabsearchDispatcher(basic.Dispatcher):
 class Jabsearch(basic.Messenger):
     
     def search(self, stanza, terms):
-        print "hoa"
         results = Search(terms)
         return self.message(messages.search_result.render(results=results.results))
 
