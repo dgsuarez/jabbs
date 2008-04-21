@@ -4,16 +4,19 @@ from jabbs import basic, core
 
 
 class PoorDispatcher(basic.Dispatcher):
+    """Dispatcher for poorboy"""
     def __init__(self, conversation):
         self.poor = PoorBoy(conversation.info)
         
     def dispatcher(self):
+        """bye ends the conversation"""
         return [("^bye", self.poor.bye),
                 ("(.*)", self.poor.get_answer)]
         
 class PoorBoy(basic.Messenger):
-    
+    """Small inefficient AI"""
     def get_answer(self, stanza, body):
+        """Gets the answer to a message"""
         a = self.is_greeting(body)
         if a:
             return self.message(a)
@@ -23,6 +26,7 @@ class PoorBoy(basic.Messenger):
         return self.message(self.ask_about(body))
 
     def is_greeting(self, body):
+        """Check if a message is a greeting"""
         greetings = ("hi", "hello")
         for i in greetings:
             if i in body:
@@ -30,6 +34,7 @@ class PoorBoy(basic.Messenger):
         return False 
     
     def ask_about_parents(self, body):
+        """Asks about parents if asked"""
         mother = ("mother", "mom", "mommy")
         father = ("father", "dad", "daddy")
         for i in itertools.chain(mother, father):
@@ -38,6 +43,7 @@ class PoorBoy(basic.Messenger):
         return False
     
     def ask_about(self, body):
+        """Regular substitution of the received message"""
         substitutions = [("you", "I"),
                      ("are", "am"),
                      ("me","you"),
@@ -60,6 +66,7 @@ class PoorBoy(basic.Messenger):
         return "Tell me more about why %s" % body
     
     def bye(self, stanza):
+        """Ends the conversation"""
         return self.end("bye")
 
 if __name__=="__main__":

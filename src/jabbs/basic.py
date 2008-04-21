@@ -22,12 +22,15 @@ class Dispatcher:
         print stanza.serialize()
         
     def on_user_connect(self):
+        """Called when a user starts a jabber session"""
         pass
     
     def on_user_disconnect(self):
+        """Called when a user ends a jabber session"""
         pass
 
-class Messenger: 
+class Messenger:
+    """Messenger base class. Messengers must inherit from this one"""
     def __init__(self, conversation_info):
         self.conversation_info = conversation_info    
     
@@ -37,7 +40,7 @@ class Messenger:
                                              body=body,
                                              stanza_type=self.conversation_info.type,
                                              stanza_id=self.conversation_info.next_stanza_id))
-        
+    
     def end(self, body):
         """Returns an end message"""
         return EndMessage(stanza=Message(to_jid=self.conversation_info.jid, 
@@ -45,7 +48,6 @@ class Messenger:
                                              stanza_type=self.conversation_info.type,
                                              stanza_id=self.conversation_info.next_stanza_id))
         
-    
     def no_message(self):
         """Returns a no message"""
         return NoMessage()

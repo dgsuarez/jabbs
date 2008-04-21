@@ -7,6 +7,7 @@ from sqlalchemy.orm import mapper, clear_mappers, relation, sessionmaker
 
 
 class Minutes(object):
+    """Represents minutes"""
     def __init__(self, scribe="", chair="", title="No title"):
         self.scribe = scribe
         self.chair = chair
@@ -30,6 +31,7 @@ Topics:
         
 
 class Topic(object):
+    """A topic in minutes"""
     def __init__(self, title):
         self.title = title
         
@@ -38,6 +40,7 @@ class Topic(object):
 
 
 class Statement(object):
+    """A statement in a topic"""
     def __init__(self, author, text):
         self.author = author
         self.text = text
@@ -47,6 +50,7 @@ class Statement(object):
 
 
 class Participant(object):
+    """Participant in minutes"""
     def __init__(self, name):
         self.name = name
         
@@ -54,6 +58,7 @@ class Participant(object):
         return self.name
 
 def init():
+    """Creates a connection to the db and sets the mappings"""
     mysql_db = create_engine('mysql://minuteman:b3rb3r3ch0@127.0.0.1/minutes')
     metadata = MetaData()
     minutes_table = Table("minutes", metadata,
@@ -93,6 +98,7 @@ def init():
     return sessionmaker(bind=mysql_db, autoflush=True, transactional=True)
     
 def get_session():
+    """Returns the db session"""
     return session()
     
 session = init()
