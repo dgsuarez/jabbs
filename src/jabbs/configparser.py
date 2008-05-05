@@ -18,7 +18,7 @@ class Config:
         except:
             logger.error("JID and password must be provided in configuration file")
             raise ParseError, "JID and password must be provided in configuration file"
-        module, modclass = self.__read_starter(conf, logger)
+        module, modclass = self.__read_starter(conf)
         self.starter_params = conf.get("starter params", {})
         self.__read_user_control(conf)
         self.nick = conf.get("nick", "botiboti")
