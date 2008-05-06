@@ -349,7 +349,7 @@ class RoomHandler(MucRoomHandler):
         if self.room_state.get_nick() == stanza.get_from().resource:
             return
         self.logger.info("received stanza: "+ stanza.serialize())
-        self.core.received_groupchat(user, stanza)
+        self.core.groupchat_received(user, stanza)
         
     def error(self, stanza):
         self.logger.info("received error stanza: "+ stanza.serialize())
