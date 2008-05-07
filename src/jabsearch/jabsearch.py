@@ -1,5 +1,7 @@
 import simplejson
 import urllib2
+import urllib
+
 from jabbs import util, core, basic
 
 import messages
@@ -10,6 +12,7 @@ class Search:
     """Search through yahoo! search api"""
     def __init__(self, terms, limit=5):
         """Makes a new search through yahoo! search api"""
+        terms = urllib.quote(terms)
         url = "http://search.yahooapis.com/WebSearchService/V1/webSearch?appid=yahoosoyyo&query=%s&output=json&results=%s" % (terms, limit)
         result = ""
         for l in urllib2.urlopen(url):
@@ -34,8 +37,11 @@ class JabsearchDispatcher(basic.Dispatcher):
 class Jabsearch(basic.Messenger):
     """Creates a new search from the specified terms"""
     def search(self, stanza, terms):
-        results = Search(terms)
-        return self.message(messages.search_result.render(results=results.results))
+        try:
+            results = Search(terms)
+            return self.message(messages.search_result.render(results=results.results))
+        except:
+            return self.message("An error has ocurred. Try again in a few moments")
 
 
 if __name__ == "__main__":
