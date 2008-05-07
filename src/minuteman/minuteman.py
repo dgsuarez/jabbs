@@ -6,12 +6,13 @@ import messages
 
 util.jinja_messages_from_strings(messages)
 
-class MainDispatcher(basic.Dispatcher):
+class MainDispatcher(basic.Dispatcher, basic.Messenger):
     """Default dispatcher"""
     def __init__(self, conversation):
         self.minuteman_dispatcher = MinutemanDispatcher(conversation, self)
         self.minutes_manager_dispatcher = MinutesManagerDispatcher(conversation, self)
         basic.Dispatcher.__init__(self,conversation)
+        basic.Messenger.__init__(self, conversation.info)
         
     def dispatcher(self):
         """Can start managing minutes or minuting"""
@@ -23,10 +24,12 @@ class MainDispatcher(basic.Dispatcher):
     def manage_minutes(self, stanza):
         """Starts managing minutes"""
         self.conversation.transfer(self.minutes_manager_dispatcher)
+        return self.message(messages.started_managing.render())
         
     def start_minutes(self, stanza):
         """Starts minutes"""
         self.conversation.transfer(self.minuteman_dispatcher)
+        return self.message(messages.started_minutes.render())
 
 class MinutemanDispatcher(basic.Dispatcher):
     """Minutes taking dispatcher"""

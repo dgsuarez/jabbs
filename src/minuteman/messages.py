@@ -1,3 +1,5 @@
+started_minutes = "Started minutes"
+started_managing = "Started managing minutes"
 scribe_already_set = "Scribe is already set"
 field_set_to = "{{field}} set to: {{value}}"
 position_set_to = "{{position}} is: {{name}}"
@@ -8,8 +10,9 @@ minutes_ended = "Minutes ended"
 error_deleting = "Error deleting minutes with id {{id}}"
 minutes_deleted = "Minutes with id {{id}} deleted"
 select_minutes_to_remove = "Select minutes to delete"
-available_minutes_are = "Available minutes are"
+available_minutes_are = "Select one of the available minutes"
 show_available_minutes = """\
+Available minutes are:
 {% for minutes in minutes_list %}
 Title: {{minutes.title}}
 Chair: {{minutes.chair}}
