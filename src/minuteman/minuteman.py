@@ -13,6 +13,13 @@ class MainDispatcher(basic.Dispatcher, basic.Messenger):
         self.minutes_manager_dispatcher = MinutesManagerDispatcher(conversation, self)
         basic.Dispatcher.__init__(self,conversation)
         basic.Messenger.__init__(self, conversation.info)
+    
+    def ini(self):
+        if (self.conversation.info.room_state):
+            self.conversation.transfer(self.minuteman_dispatcher)
+        else:
+            self.conversation.transfer(self.minutes_manager_dispatcher)
+            
         
     def dispatcher(self):
         """Can start managing minutes or minuting"""
