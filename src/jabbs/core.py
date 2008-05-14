@@ -225,6 +225,7 @@ class Conversation(threading.Thread):
         self.queues = queues
         self.__stop = False
         self.transfer(dispatcher(self, **dispatcher_params))
+        self.dispatcher.ini()
         threading.Thread.__init__(self)
     
     def run(self):

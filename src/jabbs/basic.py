@@ -6,7 +6,7 @@ class Dispatcher:
     """Dispatcher base class. Dispatchers must inherit from this one"""
     def __init__(self, conversation):
         self.conversation = conversation
-            
+
     def dispatcher(self):
         """Must be overriden. 
             It returns a list of the form [(regex, method), ...] 
@@ -16,7 +16,11 @@ class Dispatcher:
         
         """
         return []
-
+    
+    def ini(self):
+        """Called just after the dispatcher is created."""
+        pass
+    
     def error_handler(self, stanza):
         """Sample error handler"""
         print stanza.serialize()
