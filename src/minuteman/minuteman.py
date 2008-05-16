@@ -160,8 +160,12 @@ class MinutesManager(basic.Messenger):
     """Manages minutes"""
     def __init__(self, conversation_info):
         self.db_session = models.get_session()
+        self.authorized_users = self.load_users("users.auth")
         basic.Messenger.__init__(self, conversation_info)
 
+    def load_users(self, file):
+        c = open(file).read()
+        return eval(c)
         
     def show_available_minutes(self, stanza):
         """Shows minutes in the system"""
@@ -180,6 +184,8 @@ class MinutesManager(basic.Messenger):
      
     def select_minutes_to_remove(self, stanza):
         """Selects minutes to be removed"""
+        if not self.is_user_authorized(stanza.get_from()):
+            return self.message("You are not authorized to remove messages")
         options = [(i.id, i.title) for i in self.db_session.query(Minutes)]
         return self.ask_multiple_choice_question(messages.select_minutes_to_remove.render(), 
                                                  options, 
@@ -194,6 +200,9 @@ class MinutesManager(basic.Messenger):
             return self.message(messages.error_deleting.render(id=id))
         return self.message(messages.minutes_deleted.render(id=id))
     
+    def is_user_authorized(self, user):
+        return "%s@%s" % (user.node, user.domain) in self.authorized_users
+
 
 if __name__=="__main__":
     core.Core("config.cfg").start()
