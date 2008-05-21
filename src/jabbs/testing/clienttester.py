@@ -40,6 +40,8 @@ class Tester(JabberClient):
         if not stanza.get_body():
             return 
         self.send_next = True
+        if not "expected" in dir(self):
+            return
         if not re.compile(self.expected).search(stanza.get_body()):
             self.fail_count += 1
             self.failed_messages.append((self.expected, stanza.get_body()))
