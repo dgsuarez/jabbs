@@ -23,6 +23,7 @@ class Jablog(basic.Messenger):
     def log(self, stanza):
         """Logs a received message"""
         self.file.write( "<"+stanza.get_from().as_string()+"> "+stanza.get_body()+"\n")
+        self.file.flush()
         return self.no_message()
     
     def bye(self, stanza):
