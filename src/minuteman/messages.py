@@ -47,9 +47,16 @@ To add a topic -> Topic: title
 To add a statement -> To be minuted: author: title
 To continue a statement -> ... statement
 To close the minutes -> End minutes
+To manage minutes -> Start a conversation just with me
 """
+
 help_manager = """\
 To show all minutes -> Show minutes
 To show just one minute -> Select minutes
 To delete one minute -> Remove minutes
+To start minutes -> Enter a room chat i'm into
+"""
+
+default_manager = """\
+The command you just introduced is invalid. To see a list of available commands type "help"
 """

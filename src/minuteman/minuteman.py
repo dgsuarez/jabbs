@@ -163,7 +163,8 @@ class MinutesManagerDispatcher(basic.Dispatcher):
                 ("Select minutes", self.minutes_manager.select_minutes_to_show),
                 ("Remove minutes", self.minutes_manager.select_minutes_to_remove),
                 ("Start minutes", self.main_dispatcher.start_minutes),
-                ("help", self.minutes_manager.help)
+                ("help", self.minutes_manager.help),
+                (".*", self.minutes_manager.default)
                 ]
 
 class MinutesManager(basic.Messenger):
@@ -211,11 +212,16 @@ class MinutesManager(basic.Messenger):
         return self.message(messages.minutes_deleted.render(id=id))
     
     def is_user_authorized(self, user):
+        """Check if a user is authorized in the system"""
         return "%s@%s" % (user.node, user.domain) in self.authorized_users
     
     def help(self, stanza):
         """Shows a help message"""
         return self.message(messages.help_manager.render())
+    
+    def default(self, stanza):
+        """For malformed commands"""
+        return self.message(messages.default_manager.render())
 
 if __name__=="__main__":
     core.Core("config.cfg").start()
