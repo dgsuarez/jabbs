@@ -38,3 +38,18 @@ Participants: {% for person in minutes.participants %}{{person.name}}, {% endfor
 No minutes
 {% endfor %}
 """
+
+help_minuteman ="""\
+To become scribe -> I'm the scribe
+To set the title -> Title: title
+To set the chair -> Chair: chair
+To add a topic -> Topic: title
+To add a statement -> To be minuted: author: title
+To continue a statement -> ... statement
+To close the minutes -> End minutes
+"""
+help_manager = """\
+To show all minutes -> Show minutes
+To show just one minute -> Select minutes
+To delete one minute -> Remove minutes
+"""

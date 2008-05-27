@@ -58,7 +58,8 @@ class MinutemanDispatcher(basic.Dispatcher):
         ("^To be minuted: (.+?): (.+)",self.minuteman.add_statement),
         ("\.\.\.(.*)", self.minuteman.continue_statement),
         ("Show minutes", self.minuteman.show_info),
-        ("End minutes", self.minuteman.end_minutes)
+        ("End minutes", self.minuteman.end_minutes),
+        ("help", self.minuteman.help)
         ]
   
 class Minuteman(basic.Messenger):
@@ -136,9 +137,17 @@ class Minuteman(basic.Messenger):
         if self.conversation_info.room_state:
             attendees = self.conversation_info.room_state.users.keys()
             for i in attendees:
-                self.minutes.participants.append(Participant(i))
+                p = self.db_session.query(models.Participant).filter_by(name=i).first()
+                if p:
+                     self.minutes.participants.append(p)
+                else:
+                     self.minutes.participants.append(Participant(i))
         self.db_session.commit()
         return self.end(messages.minutes_ended.render())
+    
+    def help(self, stanza):
+        """Shows a help message"""
+        return self.message(messages.help_minuteman.render())
     
 
 class MinutesManagerDispatcher(basic.Dispatcher):
@@ -153,7 +162,8 @@ class MinutesManagerDispatcher(basic.Dispatcher):
         return [("Show minutes", self.minutes_manager.show_available_minutes),
                 ("Select minutes", self.minutes_manager.select_minutes_to_show),
                 ("Remove minutes", self.minutes_manager.select_minutes_to_remove),
-                ("Start minutes", self.main_dispatcher.start_minutes)
+                ("Start minutes", self.main_dispatcher.start_minutes),
+                ("help", self.minutes_manager.help)
                 ]
 
 class MinutesManager(basic.Messenger):
@@ -202,7 +212,10 @@ class MinutesManager(basic.Messenger):
     
     def is_user_authorized(self, user):
         return "%s@%s" % (user.node, user.domain) in self.authorized_users
-
+    
+    def help(self, stanza):
+        """Shows a help message"""
+        return self.message(messages.help_manager.render())
 
 if __name__=="__main__":
     core.Core("config.cfg").start()
