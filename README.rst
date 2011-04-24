@@ -13,3 +13,13 @@ The framework itself is in *src/jabbs*, with some integration tests in *src/test
 - *src/jabsearch*: Search with Yahoo!
 - *src/minuteman*: Keep minutes of meetings
 - *src/poorboy*: Really simple eliza clone
+
+Dependencies
+------------
+
+PyXMPP: http://pyxmpp.jajcus.net/
+
+License
+-------
+
+All code licensed under the `GPL <http://www.gnu.org/licenses/gpl.html>`_
